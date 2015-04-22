@@ -15,6 +15,8 @@
  *
  * Author: thirdstormofcythraul@outlook.com
  */
+#pragma once
+
 #include <string>
 namespace std {
 	// Define tstring as string or wstring if we are in unicode or not
@@ -29,3 +31,13 @@ namespace std {
     #endif
 
 }
+
+
+#if defined _UNICODE || defined UNICODE
+	std::tstring tosW(std::string s);
+	std::string tosS(std::tstring w);
+	std::wstring lToW(unsigned long i);
+	char *wToc(const wchar_t *wstr);
+#else
+	std::tstring tosW(std::string s);
+#endif

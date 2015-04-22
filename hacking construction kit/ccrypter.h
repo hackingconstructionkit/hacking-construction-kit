@@ -29,7 +29,7 @@ public:
 	* This function will search for .text, xor the section, and add a new section with the stub.
 	* The new section will have a random name.
 	*/
-	static bool crypt(const char *infile, const char *outfile);
+	static bool crypt(const wchar_t *infile, const wchar_t *outfile);
 
 	static DWORD freeSpaceInHeader(PVOID pvPEBase);
 
@@ -41,7 +41,7 @@ public:
 
 	static BOOL insertSectionConfigInPE(PVOID pvPEBase, DWORD dwPESize, PVOID pvData, DWORD dwDataSize, PVOID *ppvNewPE, DWORD *pdwNewPESize);
 
-	static bool saveFile(const char* nameFile, char* data, int sz);
+	static bool saveFile(const wchar_t *nameFile, char *data, int sz);
 
 	// the new section name
 	static char *section;

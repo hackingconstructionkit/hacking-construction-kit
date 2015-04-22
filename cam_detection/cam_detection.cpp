@@ -13,17 +13,17 @@
 #include <cwebcam.h>
 #pragma comment(lib, "hacking construction kit.lib")
 
-int _tmain(int argc, _TCHAR* argv[])
+int _tmain(int argc, wchar_t* argv[])
 {
 	if (argc != 6) {
 		printf("try to capture image only if a motion is detected\n");
 		printf("usage: %s threshold img_modif_percent pixels name_diff count\n", argv[0]);
 		return 0;
 	}
-	int threshold = atoi(argv[1]); 
-	int img_modif_percent = atoi(argv[2]); 
-	int pixels = atoi(argv[3]); 
-	int count = atoi(argv[5]); 
+	int threshold = _tstoi(argv[1]); 
+	int img_modif_percent = _tstoi(argv[2]); 
+	int pixels = _tstoi(argv[3]); 
+	int count = _tstoi(argv[5]); 
 
 #ifdef _DEBUG
 	_CrtSetDbgFlag ( _CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF );
@@ -32,7 +32,7 @@ int _tmain(int argc, _TCHAR* argv[])
 	if (request_webcam_start(640, 480, 1) == 0){
 		for (int i = 0; i < count; i++){
 			Sleep(1000);// wait for initialisation ?
-			request_webcam_motion_detection("image.jpg", 100, threshold, img_modif_percent, pixels, argv[4]);
+			request_webcam_motion_detection(_T("image.jpg"), 100, threshold, img_modif_percent, pixels, argv[4]);
 		}
 	}
 	request_webcam_stop();

@@ -27,7 +27,9 @@ class Process {
 
 public:
 	// get process pid from his name
-	static DWORD getPid(const char *name);
+	static DWORD getPid(const wchar_t *name);
+
+	static HANDLE getExplorerHandle();
 
 	// kill this process
 	static bool killProcess(DWORD pid);
@@ -35,7 +37,7 @@ public:
 	// inject this dll into this process
 	// use a good old CreateRemoteThread with LoadLibrary
 	// you have to use the full path to the dll
-	static bool injectDllWithLoadLibrary(const char *fullpath, DWORD pid);
+	static bool injectDllWithLoadLibrary(const wchar_t *path, DWORD pid);
 
 	// load in current process a dll from memory location (without using LoadLibrary)
 	// this is just a wrapper to MemoryModule
@@ -51,7 +53,7 @@ public:
 	// The dll must not use CRT library. It must also not use a library which is not present in remote process.
 	// In fact, you'll probably have to use only kernel32.lib
 	// The function called in the dll is the entrypoint (DllMain)
-	static bool injectDll(const char *path, DWORD pid);
+	static bool injectDll(const wchar_t *path, DWORD pid);
 
 	// Inject dll from a handle
 	static bool injectDll(HANDLE handle, DWORD pid);

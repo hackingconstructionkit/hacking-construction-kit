@@ -4,6 +4,7 @@
 #include "the_plugin.h"
 
 #include <Windows.h>
+#include <tchar.h>
 
 ThePlugin::ThePlugin(): m_stopped(false){
 
@@ -16,7 +17,7 @@ ThePlugin::~ThePlugin(){
 void ThePlugin::start() {
 	printf("started\n");
 	while(!m_stopped){
-		HANDLE hFile = CreateFile("\\windows\\temp\\test_plug.log", GENERIC_WRITE, FILE_SHARE_READ, 0, OPEN_ALWAYS, 0, 0);
+		HANDLE hFile = CreateFile(_T("\\windows\\temp\\test_plug.log"), GENERIC_WRITE, FILE_SHARE_READ, 0, OPEN_ALWAYS, 0, 0);
 		if (hFile == INVALID_HANDLE_VALUE){
 			printf("unable to create file: %d", GetLastError());
 		} else {
@@ -26,14 +27,14 @@ void ThePlugin::start() {
 			SetFilePointer(hFile, 0, 0, FILE_END);
 
 			char buff[256]; 
-			lstrcpy(buff,"timer:  ");
+			strcpy_s(buff, "timer:  ");
 			GetLocalTime(&st);
-			GetDateFormat(0,0,&st,"dd/MM/yyyy",buff+lstrlen(buff),12);
-			lstrcat(buff," à ");
-			GetTimeFormat(0,0,&st,"HH:mm:ss",buff+lstrlen(buff),12);
-			lstrcat(buff,"\r\n");
+			GetDateFormatA(0, 0, &st,"dd/MM/yyyy", buff + strlen(buff), 12);
+			strcat_s(buff," à ");
+			GetTimeFormatA(0, 0, &st, "HH:mm:ss", buff + strlen(buff), 12);
+			strcat_s(buff, "\r\n");
 
-			WriteFile(hFile,buff,lstrlen(buff),&dwLen,0);
+			WriteFile(hFile, buff, strlen(buff), &dwLen, 0);
 			CloseHandle(hFile);
 		}
 		Sleep(1000);

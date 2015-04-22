@@ -1,6 +1,6 @@
 /*
- * Author: thirdstormofcythraul@outlook.com
- */
+* Author: thirdstormofcythraul@outlook.com
+*/
 #include "global.h"
 
 #include <stdio.h>
@@ -16,11 +16,24 @@ Global Global::m_instance = Global();
 
 
 Global::Global():
-	m_isInit(false),
 	m_isInternetInit(false),
 	m_isPrivateInit(false),
 	SERVICE_RUNNING_EVENT(0) {
-	MUTEX = CreateMutex(NULL, FALSE, NULL);
+
+		MUTEX = CreateMutex(NULL, FALSE, NULL);
+		MYPRINTF("init running\n");
+		SERVICE_RUNNING_EVENT = CreateEvent(NULL, TRUE, FALSE, NULL);
+		if (SERVICE_RUNNING_EVENT == NULL){
+			MYPRINTF("Unable to create event %d", GetLastError());
+		}
+
+}
+
+void Global::startRunning(){
+	if (!isRunning()){
+		CloseHandle(SERVICE_RUNNING_EVENT);
+		SERVICE_RUNNING_EVENT = CreateEvent(NULL, TRUE, FALSE, NULL);
+	}
 }
 
 Global::~Global(){
@@ -65,11 +78,6 @@ std::string Global::getPublicIp(){
 	return m_publicIp;
 }
 
-void Global::init(){
-	// Create running event
-	SERVICE_RUNNING_EVENT = CreateEvent(NULL, TRUE, FALSE, NULL);
-}
-
 void Global::initLocalIp(){
 	if (m_isPrivateInit){
 		return;
@@ -107,42 +115,33 @@ void Global::initInternetIp(){
 		Sleep(5000);
 		m_internetIp = Network::getInternetIp();
 		if (m_internetIp.empty()){
-			Sleep(5000);
-			m_internetIp = Network::getInternetIp();
-			if (m_internetIp.empty()){
-				Sleep(3600000);
+			//Sleep(5000);
+			//m_internetIp = Network::getInternetIp();
+			//if (m_internetIp.empty()){
+				//Sleep(300000);
 				m_internetIp = Network::getInternetIp();
 				if (m_internetIp.empty()){
-					Sleep(3600000);
-					m_internetIp = Network::getInternetIp();
-					if (m_internetIp.empty()){
-						m_internetIp = Global::get().getPublicIp();
-					}
+					m_internetIp = Global::get().getPublicIp();
 				}
-			}
+			//}
 		}		
 	}
+
 	m_isInternetInit = true;
 }
 
 Global &Global::get(){
-	if (!Global::m_instance.m_isInit){
-		WaitForSingleObject(Global::m_instance.MUTEX, INFINITE);
-		if (!Global::m_instance.m_isInit){
-			Global::m_instance.init();
-			Global::m_instance.m_isInit = true;
-		}
-		ReleaseMutex(Global::m_instance.MUTEX);
-	}
 	return Global::m_instance;
 }
 
 bool Global::isRunning(){
 	DWORD res = WaitForSingleObject(SERVICE_RUNNING_EVENT, 0);
+	MYPRINTF("isRunning: WaitForSingleObject returned %u\n", res);
 	return res == WAIT_TIMEOUT;
 };
 
 void Global::stopRunning(){
+	MYPRINTF("stop running\n");
 	if (SetEvent(SERVICE_RUNNING_EVENT) == 0){
 		MYPRINTF( "SetEvent failed with error: %d\n", GetLastError());
 	}

@@ -51,11 +51,12 @@
 // print webcam list
 DWORD request_webcam_list();
 
+bool request_webcam_isRunning();
 // start webcam, with a maximum of width and height
 DWORD request_webcam_start(LONG width, LONG height, UINT index);
 
 // get a frame to file name and quality (0-100)
-DWORD request_webcam_get_frame(const TCHAR* name, int quality);
+DWORD request_webcam_get_frame(const wchar_t* name, int quality);
 
 // get a frame to buffer
 DWORD request_webcam_get_frame_to_buffer(char **buffer, DWORD &size, int quality);
@@ -68,10 +69,10 @@ DWORD request_webcam_stop();
 // pixels is horizontal pixel average
 // set savediff to 0 to avoid saving file differences
 // return 0 on success, -1 on no frame detection, >1 on error
-DWORD request_webcam_motion_detection(const TCHAR *name, int quality, int threshold = 10, int diffInPercent = 5, int pixels = 3, char *savediff = 0);
+DWORD request_webcam_motion_detection(const wchar_t *name, int quality, int threshold = 10, int diffInPercent = 5, int pixels = 3, wchar_t *savediff = 0);
 
 // get a frame and copy it to buffer
-DWORD request_webcam_motion_detection_to_buffer(char **buffer, DWORD &size, int quality, int threshold = 10, int diffInPercent = 5, int pixels = 3, char *savediff = 0);
+DWORD request_webcam_motion_detection_to_buffer(char **buffer, DWORD &size, int quality, int threshold = 10, int diffInPercent = 5, int pixels = 3, wchar_t *savediff = 0);
 
 // get frame difference between two buffers
 int frame_difference(PBYTE previous, PBYTE current, long imgsize, int threshold, int nbPixel);

@@ -16,6 +16,8 @@
  * Author: thirdstormofcythraul@outlook.com
  */
 #pragma once
+
+#include <string>
 /**
 * Base64: encode and decode base64
 */
@@ -29,11 +31,14 @@ public:
 	* return encoded data without trailing \0. You need to free the data.
 	*/
 	char *encode(unsigned char *data, size_t input_length, size_t *output_length);
+	wchar_t *encode(const wchar_t *data, size_t input_length, size_t *output_length);
+	std::wstring encodeString(const std::wstring &data);
 
 	/**
 	* return decoded data without trailing \0. You need to free the data.
 	*/
 	unsigned char *decode(const char *data,	size_t input_length, size_t *output_length);
+	wchar_t *decode(const wchar_t *data,	size_t input_length, size_t *output_length);
 
 
 private:
@@ -41,8 +46,10 @@ private:
 
 	void base64_cleanup();
 
+	static const wchar_t w_encoding_table[];
 	static const char encoding_table[];
 	static unsigned int mod_table[];
 	char *decoding_table;
+	wchar_t *w_decoding_table;
 };
 

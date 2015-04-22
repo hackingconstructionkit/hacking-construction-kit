@@ -16,7 +16,7 @@
 
 
 
-int _tmain(int argc, _TCHAR* argv[]){
+int _tmain(int argc, wchar_t* argv[]){
 
 #if defined (WIN32) && defined (_DEBUG)
 	_CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF|_CRTDBG_LEAK_CHECK_DF);
@@ -25,7 +25,7 @@ int _tmain(int argc, _TCHAR* argv[]){
 	PluginLoader& plugin = PluginLoader::getInstance();
 	plugin.loadAllPlugins();
 
-	plugin.load("test_plug.dll");
+	plugin.load(_T("test_plug.dll"));
 
 	Sleep(5000);
 	plugin.stop();

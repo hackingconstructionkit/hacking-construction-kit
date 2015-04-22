@@ -29,17 +29,17 @@
 */
 class Ftp {
 public:
-	Ftp(TCHAR *url, int port = 21, TCHAR *user = 0, TCHAR *password = 0);
+	Ftp(wchar_t *url, int port = 21, wchar_t *user = 0, wchar_t *password = 0);
 
 	~Ftp();
 
-	std::tstring getCurrentDirectory();
+	std::wstring getCurrentDirectory();
 
-	void setCurrentDirectory(std::tstring directory);
+	void setCurrentDirectory(std::wstring directory);
 
-	void createDirectory(std::tstring directory);
+	void createDirectory(std::wstring directory);
 
-	void uploadFile(std::tstring local, std::tstring remote);
+	void uploadFile(std::wstring local, std::wstring remote);
 
 private:
 	HINTERNET m_handle;

@@ -26,7 +26,7 @@ SoundRecorder::SoundRecorder(int sampleRate, int bitsPerSample, int nbChannels):
 
 }
 
-bool SoundRecorder::record(int lengthTime, const char *filename){
+bool SoundRecorder::record(int lengthTime, const wchar_t *filename){
 	unsigned char *response = 0;
 	int responseSize = 0;
 	bool res = record(lengthTime, &response, responseSize);
@@ -92,7 +92,9 @@ bool SoundRecorder::record(int lengthTime, unsigned char **buffer, int& size){
     }
 
      // Wait until finished recording
-     do {} while (waveInUnprepareHeader(microHandle, &waveHeader, sizeof(WAVEHDR)) == WAVERR_STILLPLAYING);
+     do {
+		Sleep(1000);
+	 } while (waveInUnprepareHeader(microHandle, &waveHeader, sizeof(WAVEHDR)) == WAVERR_STILLPLAYING);
 	 
 	int chunksize, pcmsize, numSamples, subchunk1size;
 	int audioFormat = WAVE_FORMAT_PCM;

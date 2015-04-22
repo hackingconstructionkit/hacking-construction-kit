@@ -33,19 +33,19 @@ public:
 	/**
 	* Get current SID
 	*/
-	static std::string getSid();
+	static std::wstring getSid();
 
 	/**
 	* Get module complete path 
 	* ex: foo/bar/baz.dll
 	*/
-	static std::string getModulePath();
+	static std::wstring getModulePath();
 
 	/**
 	* Get module name
 	* ex: baz.dll
 	*/
-	static std::string getModuleName();
+	static std::wstring getModuleName();
 
 	/**
 	* Get volume serial number
@@ -55,12 +55,12 @@ public:
 	/**
 	* Get architectyure of processor: 32 or 64 bits
 	*/
-	static std::tstring getProcessor();
+	static std::wstring getProcessor();
 
 	/**
 	* Get os version
 	*/
-	static std::tstring getVersion();
+	static std::wstring getOsVersion();
 
 	/**
 	* Get os version
@@ -70,7 +70,7 @@ public:
 	/**
 	* Get computer name
 	*/
-	static bool getComputerName(TCHAR *buffer, DWORD &size);
+	static bool getComputerName(wchar_t *buffer, DWORD &size);
 
 	/**
 	* Get up time
@@ -80,12 +80,12 @@ public:
 	/**
 	* Get all users on this host
 	*/
-	static std::tstring getAllUsers();
+	static std::wstring getAllUsers();
 
 	/**
 	* Get language (EN, US...)
 	*/
-	static std::tstring getWindowsLanguage();
+	static std::wstring getWindowsLanguage();
 
 	/**
 	* Get all IPs for this host
@@ -95,14 +95,15 @@ public:
 	/**
 	* Get all infos concatened
 	*/
-	static std::string getAllInfos();
+	static std::wstring getAllInfos();
+	static std::wstring getAllInfosAsString();
 
 
 	/**
 	* Get the name from this SID
 	* ex: S-1-5-32-544 return Administrators
 	*/
-	static std::string getNameFromSid(const std::string sid);
+	static std::wstring getNameFromSid(const std::wstring sid);
 
 };
 

@@ -43,10 +43,10 @@ public:
 	bool m_start;
 
 	// url for ftp(foo.com) or path for http(/foo/bar)
-	TCHAR *m_url;
+	wchar_t *m_url;
 
 	// server for http POST
-	TCHAR *m_server;
+	wchar_t *m_server;
 
 	// port
 	int m_port;
@@ -55,10 +55,10 @@ public:
 	int m_detail;
 
 	// local path name for snapshot
-	std::tstring m_locale;
+	std::wstring m_locale;
 
 	// remote file name
-	std::tstring m_remote;
+	std::wstring m_remote;
 
 	// maximum of images uploaded
 	int m_maxImg;
@@ -67,12 +67,12 @@ public:
 	int m_wait;
 
 	// ftp username
-	TCHAR *m_ftpUser;
+	wchar_t *m_ftpUser;
 
 	// ftp password
-	TCHAR *m_ftpPassword;
+	wchar_t *m_ftpPassword;
 
 	// ftp directory created on server
-	std::tstring m_ftpDirectory;
+	std::wstring m_ftpDirectory;
 	
 };

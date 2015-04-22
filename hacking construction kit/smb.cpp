@@ -14,7 +14,7 @@
 #define BUFFER_SIZE 256
 
 bool Smb::connect(const char *target){
-	NETRESOURCE	lpNetResource;
+	NETRESOURCEA	lpNetResource;
 	char	RemoteName[BUFFER_SIZE] = {0};
 	char	Username[BUFFER_SIZE] = {0};
 	char	Password[BUFFER_SIZE] = {0};
@@ -31,7 +31,7 @@ bool Smb::connect(const char *target){
 	lpNetResource.lpComment = NULL;
 	lpNetResource.lpProvider = NULL;
 
-	res = WNetAddConnection2(&lpNetResource, Username, Password, CONNECT_UPDATE_PROFILE);
+	res = WNetAddConnection2A(&lpNetResource, Username, Password, CONNECT_UPDATE_PROFILE);
 	if(res != 0) {
 		MYPRINTF( "\t\tMake SMB Connection error:%d for %s\n", GetLastError(), RemoteName);
 	}
@@ -48,7 +48,7 @@ bool Smb::closeConnection(const char *target){
 	}
 
 	sprintf_s(RemoteName, BUFFER_SIZE, "\\\\%s\\IPC$", target);
-	status = WNetCancelConnection2(
+	status = WNetCancelConnection2A(
 		RemoteName,
 		0,
 		TRUE
@@ -63,29 +63,29 @@ bool Smb::closeConnection(const char *target){
 
 
 bool Smb::bindToSpoolssPipe(const unsigned char* target){
-	return Smb::bindToPipe(target, (unsigned char *)"\\PIPE\\SPOOLSS", spoolss__MIDL_AutoBindHandle);
+	return Smb::bindToPipe(target, (unsigned char *)"\\PIPE\\SPOOLSS", &spoolss__MIDL_AutoBindHandle);
 }
 
 bool Smb::bindToBrowserPipe(const unsigned char* target){
-	return Smb::bindToPipe(target, (unsigned char *)"\\PIPE\\BROWSER", srvsvc__MIDL_AutoBindHandle);
+	return Smb::bindToPipe(target, (unsigned char *)"\\PIPE\\BROWSER", &srvsvc__MIDL_AutoBindHandle);
 }
 
-bool Smb::bindToPipe(const unsigned char* target, unsigned char *pipe, RPC_BINDING_HANDLE handle){
-	unsigned char * pszStringBinding = NULL;
-	unsigned char * pszUuid = NULL;
-	unsigned char * pszProtocolSequence = (unsigned char *)"ncacn_np";
-	const unsigned char * pszNetworkAddress = target;
-	unsigned char *	pszEndpoint = pipe;
-	unsigned char * pszOptions = NULL;
+bool Smb::bindToPipe(const unsigned char* target, unsigned char *pipe, RPC_BINDING_HANDLE *handle){
+	unsigned char *pszStringBinding = 0;
+	unsigned char *pszUuid = 0;
+	unsigned char *pszProtocolSequence = (unsigned char *)"ncacn_np";
+	const unsigned char *pszNetworkAddress = target;
+	unsigned char *pszEndpoint = pipe;
+	unsigned char *pszOptions = 0;
 
-	if (RpcStringBindingCompose(pszUuid, pszProtocolSequence, (RPC_CSTR)pszNetworkAddress, pszEndpoint, pszOptions, &pszStringBinding)){
+	if (RpcStringBindingComposeA(pszUuid, pszProtocolSequence, (RPC_CSTR)pszNetworkAddress, pszEndpoint, pszOptions, &pszStringBinding)){
 		return false;
 	}
-	if(RpcBindingFromStringBinding(pszStringBinding, &handle) != RPC_S_OK)
+	if(RpcBindingFromStringBindingA(pszStringBinding, handle) != RPC_S_OK)
 	{
-		RpcStringFree( &pszStringBinding );
+		RpcStringFreeA( &pszStringBinding );
 		return false;
 	}
-	RpcStringFree( &pszStringBinding );
+	RpcStringFreeA( &pszStringBinding );
 	return true;
 }

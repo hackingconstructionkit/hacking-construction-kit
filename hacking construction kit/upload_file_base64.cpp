@@ -273,7 +273,7 @@ const char* UploadFileInBase64::commands[51] = {
 	"echo End Function^>^>%1"
 };
 
-UploadFileInBase64::UploadFileInBase64(const char *originalFile, const char *destinationFile):
+UploadFileInBase64::UploadFileInBase64(const wchar_t *originalFile, const char *destinationFile):
 		original(originalFile),
 		destination(destinationFile)
 	{
@@ -437,13 +437,13 @@ UploadFileInBase64::UploadFileInBase64(const char *originalFile, const char *des
 
 
 
-	unsigned char *UploadFileInBase64::readFile(const char *path, size_t *size){
+	unsigned char *UploadFileInBase64::readFile(const wchar_t *path, size_t *size){
 		unsigned char * buffer;
 		size_t result;
 		FILE * file;
 		errno_t err;
 
-		if( (err  = fopen_s( &file, path, "rb" )) != 0 ) {
+		if( (err  = _wfopen_s( &file, path, L"rb")) != 0 ) {
 			MYPRINTF("Unable to fopen_s file\n");
 			return false;
 		}

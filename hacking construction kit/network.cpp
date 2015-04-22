@@ -10,8 +10,6 @@
 #include <Winhttp.h>
 #pragma comment(lib, "Winhttp")
 
-#include <tchar.h>
-
 #include "print.h"
 #include "macro.h"
 #include "wsa_init.h"
@@ -20,7 +18,7 @@
 
 static WsaInit init;
 
-std::tstring Network::getInternetIp(){
+std::string Network::getInternetIp(){
 	DWORD dwSize = 0;
 	DWORD dwDownloaded = 0;
 	LPSTR pszOutBuffer;
@@ -111,27 +109,11 @@ std::tstring Network::getInternetIp(){
 
 		sock.sa_family = AF_INET;
 
-		int iRetval = WSAStringToAddress(localIp, AF_INET, 0, &sock, &addrSize);
+		int iRetval = WSAStringToAddressA(localIp, AF_INET, 0, &sock, &addrSize);
 		if (iRetval != 0){
-			return 0;
+			return "";
 		}
 	}
-#ifdef UNICODE
-	if (localIp != NULL){
-		TCHAR out[1024];
-		int len;
-		len = MultiByteToWideChar(CP_ACP, 0, localIp, -1, out, 1024);
-		if (len < 0) {
-			return TEXT("");
-		}
-		std::tstring result = out;
-		return result;
-	} else {
-		return "";
-	}
-
-
-#else
 	if (localIp != NULL){
 		std::string res = localIp;
 		free(localIp);
@@ -139,10 +121,10 @@ std::tstring Network::getInternetIp(){
 	} else {
 		return "";
 	}
-#endif
+
 }
 
-std::tstring Network::getPublicOrPrivate(){
+std::string Network::getPublicOrPrivate(){
 	char *localIp = NULL;
 	char *localPrivate = NULL;
 	int iResult;
@@ -191,21 +173,7 @@ std::tstring Network::getPublicOrPrivate(){
 	free(localPrivate);
 
 	freeaddrinfo(result);
-#ifdef UNICODE
-	if (localIp != NULL){
-		TCHAR out[1024];
-		int len;
-		len = MultiByteToWideChar(CP_ACP, 0, localIp, -1, out, 1024);
-		if (len < 0) {
-			return TEXT("");
-		}
-		std::tstring sresult = out;
-		return sresult;
-	} else {
-		return "";
-	}
-	
-#else
+
 	if (localIp != NULL){
 		std::string res = localIp;
 		free(localIp);
@@ -213,7 +181,7 @@ std::tstring Network::getPublicOrPrivate(){
 	} else {
 		return "";
 	}
-#endif
+
 }
 
 bool Network::is192Network(){
@@ -344,16 +312,16 @@ bool Network::isPortOpen(char *target, int port){
 }
 
 /**
-void Network::getCurrentName(TCHAR *szExeName){
-	TCHAR  FileNamePath [256];
+void Network::getCurrentName(wchar_t *szExeName){
+	wchar_t  FileNamePath [256];
 	unsigned int i;
-	TCHAR *pch;
+	wchar_t *pch;
 	size_t length;
 
 	GetModuleFileName(0, FileNamePath, MAX_PATH);
-	pch = _tcsrchr(FileNamePath,'\\');
+	pch = wcsrchr(FileNamePath,'\\');
 
-	length =  _tcslen(pch);
+	length =  wcslen(pch);
 	for(i=0; i < length; i++)
 	{
 		*pch++;

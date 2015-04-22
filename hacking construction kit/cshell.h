@@ -32,27 +32,28 @@ public:
 	* Add this user as RDP user with this password
 	* hide it from logon list, enable RDP and start service
 	*/
-	static void addRdpUser(const char *username, const char *password);
+	static bool addRdpUser(const wchar_t *username, const wchar_t *password);
 	/*
 	* Remove this user
 	*/
-	static void removeRdpUser(const char *username);
+	static void removeRdpUser(const wchar_t *username);
 	/**
 	* Execute this command on a shell, in a new process
 	*/
-	static void executeCmd(const char *arguments);
+	static bool executeCmd(const wchar_t *arguments, bool waitForTerminate = false, bool hideWindow = false);
 	/**
 	* Execute this command on a shell, in a new process, and return output as a string
 	*/
-	static std::string getCmdOutput(const char *arguments);
+	static std::wstring getCmdOutput(const wchar_t *arguments, bool hideWindow = true);
 	/**
 	* Execute this file, in a new process, and return output as a string
 	*/
-	static std::string getProcessOutput(const char *filename);
+	static std::string getProcessOutput(const wchar_t *filename, bool hideWindow = true);
 	/**
 	* Open a process for filename with arguments
 	*/
-	static void execute(const char *filename, const char *arguments);
+	static bool execute(const wchar_t *filename, const wchar_t *arguments, bool waitForTerminate = false, bool hideWindow = false);
+	static std::wstring convertFromCurrentCodePage(const std::string &message);
 	/**
 	* Open a cmd.exe shell on this port
 	*/

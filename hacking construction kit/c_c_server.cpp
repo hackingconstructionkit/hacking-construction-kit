@@ -1,6 +1,7 @@
 /*
  * Author: thirdstormofcythraul@outlook.com
  */
+
 #include "c_c_server.h"
 
 #include "memory_debug.h"

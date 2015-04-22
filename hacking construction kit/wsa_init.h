@@ -17,6 +17,7 @@
  */
 #pragma once
 
+// Initialize wsa
 class WsaInit {
 
 public:

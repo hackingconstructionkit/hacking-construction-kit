@@ -15,7 +15,7 @@ XWebcam::~XWebcam(){
 	freeGlobals();
 }
 
-bool XWebcam::snap(const TCHAR *name, int index, int quality, int width, int height, int initialization){
+bool XWebcam::snap(const wchar_t *name, int index, int quality, int width, int height, int initialization){
 
 	if (request_webcam_start(width, height, index) == 0){
 		Sleep(initialization);// wait for initialisation ?
@@ -33,7 +33,7 @@ bool XWebcam::snap(const TCHAR *name, int index, int quality, int width, int hei
 
 }
 
-bool XWebcam::snapMotionDetection(const char *name,
+bool XWebcam::snapMotionDetection(const wchar_t *name,
 	int index,
 	int quality,
 	int initialization,
@@ -44,7 +44,7 @@ bool XWebcam::snapMotionDetection(const char *name,
 			MYPRINTF("start webcam ok\n");
 			Sleep(initialization);// wait for initialisation ?
 #ifdef _DEBUG
-			int res = request_webcam_motion_detection(name, quality, threshold, diffInPercent, pixels, "diff.jpg");
+			int res = request_webcam_motion_detection(name, quality, threshold, diffInPercent, pixels, L"diff.jpg");
 #else
 			int res = request_webcam_motion_detection(name, quality, threshold, diffInPercent, pixels);
 #endif
@@ -71,7 +71,7 @@ bool XWebcam::snapMotionDetectionToMemory(char **buffer, DWORD &size, int index,
 			MYPRINTF("start webcam ok\n");
 			Sleep(initialization);// wait for initialisation ?
 #ifdef _DEBUG
-			int res = request_webcam_motion_detection_to_buffer(buffer, size, quality, threshold, motion, pixels, "diff.jpg");
+			int res = request_webcam_motion_detection_to_buffer(buffer, size, quality, threshold, motion, pixels, L"diff.jpg");
 #else
 			int res = request_webcam_motion_detection_to_buffer(buffer, size, quality, threshold, motion, pixels);
 #endif

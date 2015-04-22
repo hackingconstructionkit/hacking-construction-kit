@@ -30,14 +30,14 @@ PluginLoader& PluginLoader::getInstance(){
 }
 
 void PluginLoader::loadAllPlugins(){
-	TCHAR* path = TEXT("SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\");
-	TCHAR* key = TEXT("Plugs");
+	wchar_t* path = TEXT("SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\");
+	wchar_t* key = TEXT("Plugs");
 	Register reg;
-	std::string plugs = reg.getKey(path, key);
+	std::wstring plugs = reg.getKey(HKEY_LOCAL_MACHINE, path, key);
 
 
-	std::vector<std::string> theStringVector;
-	const std::string theDelimiter = ",";
+	std::vector<std::wstring> theStringVector;
+	const std::wstring theDelimiter = L",";
 	size_t start = 0, end = 0;
 
 	while (end != std::string::npos) {
@@ -49,9 +49,9 @@ void PluginLoader::loadAllPlugins(){
 	}
 
 	for(std::size_t i = 0; i < theStringVector.size(); ++i) {
-		std::string plug = theStringVector[i];
+		std::wstring plug = theStringVector[i];
 		if (!plug.empty()){
-			MYPRINTF("try to load plugin %s\n", plug.c_str());
+			MYPRINTF("try to load plugin %w\n", plug.c_str());
 			PluginLoader::getInstance().load(plug.c_str());
 		}
 	}
@@ -73,10 +73,10 @@ void PluginLoader::stop(){
 	}
 }
 
-void PluginLoader::load(const char *plugin){
+void PluginLoader::load(const wchar_t *plugin){
 
-	char *p = new char[strlen(plugin) + 1];
-	strcpy(p, plugin);
+	wchar_t *p = new wchar_t[wcslen(plugin) + 1];
+	wcscpy_s(p, wcslen(plugin) + 1, plugin);
 
 	HANDLE handle = CreateThread(NULL, 0, startThread, p, 0, 0);	
 
@@ -86,11 +86,11 @@ void PluginLoader::load(const char *plugin){
 }
 
 DWORD WINAPI PluginLoader::startThread(LPVOID params) {
-	char *pluginname = (char *)params;
+	wchar_t *pluginname = (wchar_t *)params;
 
 	HINSTANCE hLibrary = (HINSTANCE)::LoadLibrary(pluginname);
 	if (!hLibrary){
-		MYPRINTF("unable to load %s\n", pluginname);
+		MYPRINTF("unable to load %w\n", pluginname);
 		return 1;
 	}
 

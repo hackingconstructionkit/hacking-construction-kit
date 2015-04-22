@@ -1,5 +1,2 @@
-Use openssl to encrypt traffic
-Compile in Unicode
-Add some algorithms to crypter
-Make a builder
-Encode all strings in .cpp
+Add more examples
+Add crypter options like other algorithms

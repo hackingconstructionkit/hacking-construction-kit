@@ -29,13 +29,13 @@ public:
 	static bool screenshotToConsole();
 
 	// save screenshot to file (in jpeg format)
-	static bool screenshot(const char *filename);
+	static bool screenshot(const wchar_t *filename, int quality = 70);
 
 	// get screenshot as a buffer (in jpeg format)
 	// you need to free the buffer after the call
-	static bool Screen::screenshotToBuffer(char **buffer, DWORD &size);
+	static bool Screen::screenshotToBuffer(char **buffer, DWORD &size, int quality = 70);
 
 private:
-	static bool takeScreenshot(int outType, const char *filename, char **buffer, DWORD &size);
+	static bool takeScreenshot(int outType, const wchar_t *filename, char **buffer, DWORD &size, int quality);
 
 };

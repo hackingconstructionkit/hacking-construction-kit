@@ -714,7 +714,7 @@ cjpeg_source_ptr jinit_read_bmp (j_compress_ptr cinfo)
 * It was then modified to conver the BMP to JPEG and send
 * Now its realy big. 
 */
-int bmp2jpegtofile(PBYTE buf, int quality, const TCHAR* name) {
+int bmp2jpegtofile(PBYTE buf, int quality, const wchar_t* name) {
 
 	// Convert to JPEG stuff
 	struct jpeg_compress_struct cinfo;
@@ -755,7 +755,7 @@ int bmp2jpegtofile(PBYTE buf, int quality, const TCHAR* name) {
 
 
 	// Open for read (will fail if file "crt_fopen_s.c" does not exist)
-	if( (err  = fopen_s( &stream, name, "wb" )) != 0 ){
+	if( (err  = _wfopen_s( &stream, name, L"wb")) != 0 ){
 		printf( "The file was not opened\n" );
 		return 0;
 	}

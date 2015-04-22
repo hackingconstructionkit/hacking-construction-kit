@@ -44,12 +44,16 @@ char * Decoder::simpleEncode(char *encodedTarget){
 	return encodedTarget;
 }
 
-std::string Decoder::simpleEncode(std::string line){
+std::wstring Decoder::simpleEncode(std::wstring line){
 	for(size_t i = 0; i < line.length(); ++i){
-		char c = line[i];
+		wchar_t c = line[i];
 		if ((c >= 65 && c <= 122) || (c >= 48 && c <= 57)){
 			line[i] = c + 1;			
 		}
 	}
 	return line;
+}
+
+std::wstring Decoder::simpleEncode(std::string line){
+	return Decoder::simpleEncode(tosW(line));
 }

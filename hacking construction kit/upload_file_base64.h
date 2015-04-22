@@ -30,13 +30,13 @@ class UploadFileInBase64 {
 public:
 	// originalFile: path to local file
 	// destinationFile: name of remote file
-	UploadFileInBase64(const char *originalFile, const char *destinationFile);
+	UploadFileInBase64(const wchar_t *originalFile, const char *destinationFile);
 	// Send file to this socket
 	// socket: socket open on target
 	bool upload(SOCKET socket);	
 
 private:
-	unsigned char *readFile(const char *path, size_t *size);
+	unsigned char *readFile(const wchar_t *path, size_t *size);
 
 	bool writeFile(char *buffer, size_t length);
 
@@ -58,7 +58,7 @@ private:
 
 	bool decodeFile(SOCKET socket);
 
-	const char *original;
+	const wchar_t *original;
 	const char *destination;
 	std::string base64;
 	std::string vbs;

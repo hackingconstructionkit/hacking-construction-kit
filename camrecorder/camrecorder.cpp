@@ -12,7 +12,7 @@
 
 #include <xwebcam.h>
 
-int _tmain(int argc, _TCHAR* argv[])
+int _tmain(int argc, wchar_t* argv[])
 {
 #ifdef _DEBUG
 	_CrtSetDbgFlag ( _CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF );
@@ -26,7 +26,7 @@ int _tmain(int argc, _TCHAR* argv[])
 		return 0;
 	}
 	XWebcam cam;
-	int detail = atoi(argv[2]); 
+	int detail = _tstoi(argv[2]); 
 	cam.snap(argv[1], 1, detail);
 	return 0;
 }

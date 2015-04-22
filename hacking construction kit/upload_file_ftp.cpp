@@ -11,7 +11,7 @@
 
 #include "memory_debug.h"
 
-UploadFileFtp::UploadFileFtp(const char *originalFile, const char *destinationFile):
+UploadFileFtp::UploadFileFtp(const wchar_t *originalFile, const char *destinationFile):
 	original(originalFile),
 	destination(destinationFile){
 
@@ -202,7 +202,7 @@ bool UploadFileFtp::ftpServer(const char *localIp, const char *target){
 	return true;
 }
 
-bool UploadFileFtp::sendfile(const char* target, int port, const char *fileName){
+bool UploadFileFtp::sendfile(const char* target, int port, const wchar_t *fileName){
 
 	FILE* file;
 #define CHUNK_SIZE 512
@@ -210,8 +210,8 @@ bool UploadFileFtp::sendfile(const char* target, int port, const char *fileName)
 	int bytesReadFromFile = 0;
 
 	errno_t err;
-	if( (err  = fopen_s( &file, fileName, "rb" )) != 0 ) {
-		MYPRINTF("unable to open %s\n", fileName);
+	if( (err  = _wfopen_s( &file, fileName, L"rb")) != 0 ) {
+		MYPRINTF("unable to open %w\n", fileName);
 		return false;
 	}
 

@@ -15,21 +15,21 @@
 bool Utils::isDateObsolete(int year, int month){
 #define MYLANG MAKELANGID(LANG_ENGLISH, SUBLANG_DEFAULT)
 #define LOCALE_409 MAKELCID(MYLANG, SORT_DEFAULT)
-	char yearstring[3];
-	char monthstring[3]; 
+	wchar_t yearstring[3];
+	wchar_t monthstring[3]; 
 	GetDateFormat( LOCALE_409,
 		0,
 		NULL, /*localtime, not GMT*/
-		"yy",
+		L"yy",
 		yearstring,
 		sizeof(yearstring));
 	GetDateFormat( LOCALE_409,
 		0,
 		NULL, /*localtime, not GMT*/
-		"M",
+		L"M",
 		monthstring,
 		sizeof(monthstring));
-	if (atoi(yearstring) >= year && atoi(monthstring) >= month) {
+	if (_wtoi(yearstring) >= year && _wtoi(monthstring) >= month) {
 		return true;
 	}
 	return false;
@@ -62,7 +62,7 @@ bool Utils::isSandbox(){
 		res = true;
 	}
 	CloseHandle(Utils::sandboxEvent);
-	return false;
+	return res;
 }
 
 int Utils::waitALittle(int count){

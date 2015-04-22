@@ -8,7 +8,7 @@
 #pragma comment(lib, "strmiids")
 
 #include "macro.h"
-
+#include "error.h"
 #include "print.h"
 
 #ifdef LOG
@@ -73,8 +73,6 @@ long imgsize = 0;
 UINT bmpsize = 0;
 PBYTE imgdata_save = NULL;
 PBYTE bmpdata = NULL;
-//DWORD jpgsize = 0;
-//PBYTE jpgarray = NULL; //shouldn't be bigger, right?
 
 // SampleGrabber callback interface
 class MySampleGrabberCB : public ISampleGrabberCB{
@@ -89,11 +87,9 @@ public:
 			return E_FAIL;
 	}
 	virtual HRESULT STDMETHODCALLTYPE BufferCB(double SampleTime, BYTE *pBuffer, long BufferLen) {
-		//MYPRINTF("BufferCB: %d\n", BufferLen);
-		//MYPRINTF("BufferCB: %u\n", BufferLen);
-		if (imgdata == NULL || imgsize < BufferLen){
+		if (imgdata == 0 || imgsize < BufferLen){
 			imgsize = BufferLen;
-			if(imgdata != NULL) {
+			if(imgdata != 0) {
 				free(imgdata);
 			}
 			imgdata = (PBYTE)malloc(imgsize);
@@ -101,7 +97,7 @@ public:
 				MYPRINTF("Unable malloc\n");
 			}
 		}
-		memcpy(imgdata,pBuffer,imgsize);
+		memcpy(imgdata, pBuffer, imgsize);
 		if (!SetEvent(writeEvent)){ //Notify of new frame
 			MYPRINTF("Unable to set event\n");
 		}
@@ -110,15 +106,12 @@ public:
 	virtual HRESULT STDMETHODCALLTYPE QueryInterface( 
 		REFIID riid,
 		void **ppvObject) {
-			//MYPRINTF("QueryInterface\n");
 			return E_FAIL;  // Not a very accurate implementation
 	}
 	virtual ULONG STDMETHODCALLTYPE AddRef(){
-		//MYPRINTF("AddRef\n");
 		return ++m_nRefCount;
 	}
 	virtual ULONG STDMETHODCALLTYPE Release(){
-		//MYPRINTF("Release\n");
 		int n = --m_nRefCount;
 		if (n <= 0)
 			delete this;
@@ -245,12 +238,11 @@ DWORD request_webcam_count(int &count){
 }
 
 HRESULT SetCameraResolution(ICaptureGraphBuilder2* g_pCaptureGraphBuilder, 
-	IBaseFilter* g_pIBaseFilterCam, LONG desiredWidth, LONG desiredHeight) {
-		HRESULT hr = S_OK;
+	IBaseFilter* g_pIBaseFilterCam, LONG desiredWidth, LONG desiredHeight, int byteCount) {
 		IAMStreamConfig *config;
 		DWORD dwId = 0;
 
-		hr = g_pCaptureGraphBuilder->FindInterface(
+		HRESULT hr = g_pCaptureGraphBuilder->FindInterface(
 			&PIN_CATEGORY_CAPTURE,
 			&MEDIATYPE_Video,
 			g_pIBaseFilterCam,
@@ -264,26 +256,29 @@ HRESULT SetCameraResolution(ICaptureGraphBuilder2* g_pCaptureGraphBuilder,
 
 		if (SUCCEEDED(hr) &&
 			iSize == sizeof(VIDEO_STREAM_CONFIG_CAPS)) {
-
+				VIDEO_STREAM_CONFIG_CAPS scc;
+				AM_MEDIA_TYPE *pmtConfig;
+				int lastGoodConfig = 0;
 				for (int i = 0 ; i < iCount; i++) {
-					VIDEO_STREAM_CONFIG_CAPS scc;
-					AM_MEDIA_TYPE *pmtConfig;
 					// make sure we can set the capture format to the resolution we want
 					hr = config->GetStreamCaps(i, &pmtConfig, (BYTE*)&scc);
-
 
 					if (SUCCEEDED(hr)) {
 
 						VIDEOINFOHEADER* videoInfoHeader = NULL;
-
 						ULONG formatSize = pmtConfig->cbFormat;
-
+						MYPRINTF("i: %d\n", i);
 						if (pmtConfig->formattype == FORMAT_VideoInfo) {
 							if(formatSize >= sizeof(VIDEOINFOHEADER) &&	(pmtConfig->pbFormat != NULL)) {
 								videoInfoHeader = (VIDEOINFOHEADER*)pmtConfig->pbFormat;
 								LONG width = videoInfoHeader->bmiHeader.biWidth;  // Supported width
 								LONG height = videoInfoHeader->bmiHeader.biHeight; // Supported height
-								if (width >= desiredWidth && height >= desiredHeight){
+								LONG biBitCount = videoInfoHeader->bmiHeader.biBitCount;
+								LONG biSize = videoInfoHeader->bmiHeader.biSize;
+								LONG biCompression = videoInfoHeader->bmiHeader.biCompression;
+								MYPRINTF("Capabilities: index: %d width: %d height: %d bit count: %d size: %d compression: %d\n", i, width, height, biBitCount, biSize, biCompression);
+								lastGoodConfig = iCount;
+								if (width >= desiredWidth && height >= desiredHeight && (byteCount == 0 || byteCount == biBitCount)){
 									// That resolution is available, now we set the capture format to the resolution we want.
 									hr = config->SetFormat(pmtConfig);
 									config->Release();
@@ -292,22 +287,27 @@ HRESULT SetCameraResolution(ICaptureGraphBuilder2* g_pCaptureGraphBuilder,
 							}
 						}
 					}		
-					// no width found, set the max
-					hr = config->GetStreamCaps(iCount - 1, &pmtConfig, (BYTE*)&scc);
-					if (SUCCEEDED(hr)) {
-						hr = config->SetFormat(pmtConfig);
-					}
+				}
+				// no width found, set the max
+				hr = config->GetStreamCaps(lastGoodConfig, &pmtConfig, (BYTE*)&scc);
+				if (SUCCEEDED(hr)) {
+					MYPRINTF("No resolution found set the max\n");
+					hr = config->SetFormat(pmtConfig);
 				}
 
 		}
 		else {
 			hr = E_FAIL;
+			GlobalError::saveError(GlobalError::cam25);
 		}
 		config->Release();
 
 		return hr;
 }
 
+bool request_webcam_isRunning(){
+	return running;
+}
 // Starts webcam
 // return 0 for success, > 0 for error
 DWORD request_webcam_start(LONG width, LONG height, UINT index){
@@ -315,13 +315,16 @@ DWORD request_webcam_start(LONG width, LONG height, UINT index){
 	DWORD dwResult = ERROR_SUCCESS;
 
 	if(running) {
-		BREAK_WITH_ERROR("Already running!\n", ERROR_SERVICE_ALREADY_RUNNING)
+		GlobalError::saveError(GlobalError::cam1);
+		BREAK_WITH_ERROR("Already running!\n", ERROR_SERVICE_ALREADY_RUNNING);
 	}
 
 	IEnumMoniker* pclassEnum = NULL;
 	ICreateDevEnum* pdevEnum = NULL;
 	if(index < 1){
-		BREAK_WITH_ERROR("No webcams found\n", ERROR_FILE_NOT_FOUND)
+		GlobalError::saveError(GlobalError::cam2);
+		BREAK_WITH_ERROR("index < 1\n", ERROR_FILE_NOT_FOUND);
+
 	}
 
 	CoInitialize(NULL);
@@ -331,9 +334,9 @@ DWORD request_webcam_start(LONG width, LONG height, UINT index){
 		IID_ICreateDevEnum, 
 		(LPVOID*)&pdevEnum);
 	if (FAILED(hr)){
-		BREAK_WITH_ERROR("No webcams found\n", hr)
+		GlobalError::saveError(GlobalError::cam3);
+		BREAK_WITH_ERROR("CoCreateInstance: error %u\n", hr);
 	}
-	//MYPRINTF("CoCreateInstance ok\n");
 
 	hr = pdevEnum->CreateClassEnumerator(CLSID_VideoInputDeviceCategory, &pclassEnum, 0);
 
@@ -344,30 +347,33 @@ DWORD request_webcam_start(LONG width, LONG height, UINT index){
 	UINT nCount = 0;
 	IUnknown* pUnk = NULL;
 	if (pclassEnum == NULL){
-		BREAK_WITH_ERROR("No webcams found\n", ERROR_FILE_NOT_FOUND) // Error!
-	}
-	//MYPRINTF("CreateClassEnumerator ok\n");
+		GlobalError::saveError(GlobalError::cam4);
+		BREAK_WITH_ERROR("No webcams found %d\n", ERROR_FILE_NOT_FOUND);
+
+	} 
 
 	IMoniker* apIMoniker[1];
 	ULONG ulCount = 0;
-	while (SUCCEEDED(hr) && nCount < index && pclassEnum->Next(1, apIMoniker, &ulCount) == S_OK){
+	while (SUCCEEDED(hr) && nCount < index && pclassEnum->Next(index, apIMoniker, &ulCount) == S_OK){
 		pUnk = apIMoniker[0];
 		nCount++;
 	}
 	pclassEnum->Release();
 	if(pUnk == NULL){
-		BREAK_WITH_ERROR("No webcams found\n", ERROR_FILE_NOT_FOUND)
+		GlobalError::saveError(GlobalError::cam5);
+		BREAK_WITH_ERROR("No webcams found %d\n", ERROR_FILE_NOT_FOUND);
+
 	}
-	//MYPRINTF("pclassEnum->Release ok\n");
 
 	IMoniker *pMoniker = NULL;
 
 	// Grab the moniker interface
 	hr = pUnk->QueryInterface(IID_IMoniker, (LPVOID*)&pMoniker);
 	if (FAILED(hr)){
-		BREAK_WITH_ERROR("Query interface failed\n", hr)
+		GlobalError::saveError(GlobalError::cam6);
+		BREAK_WITH_ERROR("Query interface failed %u\n", hr);
+
 	}
-	//MYPRINTF("pUnk->QueryInterface ok\n");
 
 	// Build all the necessary interfaces to start the capture
 	hr = CoCreateInstance(CLSID_FilterGraph, 
@@ -376,15 +382,17 @@ DWORD request_webcam_start(LONG width, LONG height, UINT index){
 		IID_IGraphBuilder, 
 		(LPVOID*)&g_pGraphBuilder);
 	if (FAILED(hr)){
-		BREAK_WITH_ERROR("Filter graph creation failed\n", hr)
+		GlobalError::saveError(GlobalError::cam7);
+		BREAK_WITH_ERROR("Filter graph creation failed %u\n", hr);
+
 	}
-	//MYPRINTF("CoCreateInstance ok\n");
 
 	hr = g_pGraphBuilder->QueryInterface(IID_IMediaControl, (LPVOID*)&g_pMediaControl);
 	if (FAILED(hr)){
-		BREAK_WITH_ERROR("Query interface failed\n", hr)
+		GlobalError::saveError(GlobalError::cam8);
+		BREAK_WITH_ERROR("Query interface failed %u\n", hr);
+
 	}
-	//MYPRINTF("g_pGraphBuilder->QueryInterface ok\n");
 
 	hr = CoCreateInstance(CLSID_CaptureGraphBuilder2, 
 		NULL, 
@@ -392,115 +400,130 @@ DWORD request_webcam_start(LONG width, LONG height, UINT index){
 		IID_ICaptureGraphBuilder2, 
 		(LPVOID*)&g_pCaptureGraphBuilder);
 	if (FAILED(hr)){
-		BREAK_WITH_ERROR("Capture Graph Builder failed\n", hr)
+		GlobalError::saveError(GlobalError::cam9);
+		BREAK_WITH_ERROR("Capture Graph Builder failed %u\n", hr);
+
 	}
-	//MYPRINTF("CoCreateInstance ok\n");
 
 	// Setup the filter graph
 	hr = g_pCaptureGraphBuilder->SetFiltergraph(g_pGraphBuilder);
 	if (FAILED(hr)){
-		BREAK_WITH_ERROR("Set filter graph failed\n", hr)
+		GlobalError::saveError(GlobalError::cam10);
+		BREAK_WITH_ERROR("Set filter graph failed %u\n", hr);
+
 	}
-	//MYPRINTF("g_pCaptureGraphBuilder->SetFiltergraph ok\n");
 
 	// Build the camera from the moniker
 	hr = pMoniker->BindToObject(NULL, NULL, IID_IBaseFilter, (LPVOID*)&g_pIBaseFilterCam);
 	if (FAILED(hr)){
-		BREAK_WITH_ERROR("Bind to object failed\n", hr)
+		GlobalError::saveError(GlobalError::cam11);
+		BREAK_WITH_ERROR("Bind to object failed %u\n", hr);
+
 	}
-	//MYPRINTF("pMoniker->BindToObject ok\n");
 
 	// Add the camera to the filter graph
 	hr = g_pGraphBuilder->AddFilter(g_pIBaseFilterCam, L"WebCam");
 	if (FAILED(hr)){
-		BREAK_WITH_ERROR("Add filter failed\n", hr)
+		GlobalError::saveError(GlobalError::cam12);
+		BREAK_WITH_ERROR("Add filter failed %u\n", hr);
+
 	}
-	//MYPRINTF("g_pGraphBuilder->AddFilter ok\n");
 
 	// Create a SampleGrabber
 	hr = CoCreateInstance(CLSID_SampleGrabber, NULL, CLSCTX_INPROC_SERVER, IID_IBaseFilter, (void**)&g_pIBaseFilterSampleGrabber);
 	if (FAILED(hr)){
-		BREAK_WITH_ERROR("Create sample grabber failed\n", hr)
+		GlobalError::saveError(GlobalError::cam13);
+		BREAK_WITH_ERROR("Create sample grabber failed %u\n", hr);
+
 	}
-	//MYPRINTF("CoCreateInstance ok\n");
 
 	// Configure the Sample Grabber
 	ISampleGrabber *pGrabber = NULL;
 	hr = g_pIBaseFilterSampleGrabber->QueryInterface(IID_ISampleGrabber, (void**)&pGrabber);
 	if (SUCCEEDED(hr)){
-		//MYPRINTF("g_pIBaseFilterSampleGrabber->QueryInterface ok\n");
 		AM_MEDIA_TYPE mt;
 		ZeroMemory(&mt, sizeof(AM_MEDIA_TYPE));
 		mt.majortype = MEDIATYPE_Video;
 		mt.subtype = MEDIASUBTYPE_RGB24;
 		mt.formattype = FORMAT_VideoInfo;
 		hr = pGrabber->SetMediaType(&mt);
-		//MYPRINTF("SetMediaType ok\n");
 	}
-	
 
+	MySampleGrabberCB* msg = 0;
 	if (SUCCEEDED(hr)){
-		MySampleGrabberCB* msg = new MySampleGrabberCB();
+		msg = new MySampleGrabberCB();
 		hr = pGrabber->SetCallback(msg, 1);
-		//MYPRINTF("pGrabber->SetCallback ok\n");
 	}
-	
+
 
 	if (pGrabber != NULL){
 		pGrabber->Release();
 		pGrabber = NULL;
 	}
-	//MYPRINTF("pGrabber->Release ok\n");
 
 	if (FAILED(hr)){
-		BREAK_WITH_ERROR("Sample grabber instantiation failed\n", hr)
+		GlobalError::saveError(GlobalError::cam14);
+		BREAK_WITH_ERROR("Sample grabber instantiation failed %u\n", hr);
+
 	}
 
-	SetCameraResolution(g_pCaptureGraphBuilder, g_pIBaseFilterCam, width, height);
-	//MYPRINTF("SetCameraResolution ok\n");
+	SetCameraResolution(g_pCaptureGraphBuilder, g_pIBaseFilterCam, width, height, 0);
 
 	// Add Sample Grabber to the filter graph
 	hr = g_pGraphBuilder->AddFilter(g_pIBaseFilterSampleGrabber, L"SampleGrabber");
 	if (FAILED(hr)){
-		BREAK_WITH_ERROR("Add Sample Grabber to the filter graph failed\n", hr)
+		GlobalError::saveError(GlobalError::cam15);
+		BREAK_WITH_ERROR("Add Sample Grabber to the filter graph failed %u\n", hr);
+
 	}
-	//MYPRINTF("g_pGraphBuilder->AddFilter ok\n");
 
 	// Create the NullRender
 	hr = CoCreateInstance(CLSID_NullRenderer, NULL, CLSCTX_INPROC_SERVER, IID_IBaseFilter, (void**)&g_pIBaseFilterNullRenderer);
 	if (FAILED(hr)){
-		BREAK_WITH_ERROR("Create the NullRender failed\n", hr)
+		GlobalError::saveError(GlobalError::cam16);
+		BREAK_WITH_ERROR("Create the NullRender failed %u\n", hr);
+
 	}
-	//MYPRINTF("CoCreateInstance ok\n");
 
 	// Add the Null Render to the filter graph
 	hr = g_pGraphBuilder->AddFilter(g_pIBaseFilterNullRenderer, L"NullRenderer");
 	if (FAILED(hr)){
-		BREAK_WITH_ERROR("Add the Null Render to the filter graph failed\n", hr)
+		GlobalError::saveError(GlobalError::cam17);
+		BREAK_WITH_ERROR("Add the Null Render to the filter graph failed %u\n", hr);
+
 	}
-	//MYPRINTF("g_pGraphBuilder->AddFilter ok\n");
 
 	// Configure the render stream
 	hr = g_pCaptureGraphBuilder->RenderStream(&PIN_CATEGORY_CAPTURE, &MEDIATYPE_Video, g_pIBaseFilterCam,
 		g_pIBaseFilterSampleGrabber, g_pIBaseFilterNullRenderer);
 	if (FAILED(hr)){
-		BREAK_WITH_ERROR("Configure the render stream failed\n", hr)
+		MYPRINTF("render stream failed, try with another resolution\n");
+		SetCameraResolution(g_pCaptureGraphBuilder, g_pIBaseFilterCam, width / 2, height / 2, 0);
+		hr = g_pCaptureGraphBuilder->RenderStream(&PIN_CATEGORY_CAPTURE, &MEDIATYPE_Video, g_pIBaseFilterCam,
+				g_pIBaseFilterSampleGrabber, g_pIBaseFilterNullRenderer);
+
+		if (FAILED(hr)){
+			GlobalError::saveError(GlobalError::cam18);
+			BREAK_WITH_ERROR("Configure the render stream failed %u\n", hr);
+		}
+
 	}
-	//MYPRINTF("g_pCaptureGraphBuilder->RenderStream ok\n");
 
 	// Grab the capture width and height
 	hr = g_pIBaseFilterSampleGrabber->QueryInterface(IID_ISampleGrabber, (LPVOID*)&pGrabber);
 	if (FAILED(hr)){
-		BREAK_WITH_ERROR("Querying interface failed\n", hr)
+		GlobalError::saveError(GlobalError::cam19);
+		BREAK_WITH_ERROR("Querying interface failed %u\n", hr);
+
 	}
-	//MYPRINTF("g_pIBaseFilterSampleGrabber->QueryInterface ok\n");
 
 	AM_MEDIA_TYPE mt;
 	hr = pGrabber->GetConnectedMediaType(&mt);
 	if (FAILED(hr)){
-		BREAK_WITH_ERROR("GetConnectedMediaType failed\n", hr)
+		GlobalError::saveError(GlobalError::cam20);
+		BREAK_WITH_ERROR("GetConnectedMediaType failed %u\n", hr);
+
 	}
-	//MYPRINTF("pGrabber->GetConnectedMediaType ok\n");
 
 	VIDEOINFOHEADER *pVih;
 	if ((mt.formattype == FORMAT_VideoInfo) && 
@@ -510,13 +533,14 @@ DWORD request_webcam_start(LONG width, LONG height, UINT index){
 			nWidth = pVih->bmiHeader.biWidth;
 			nHeight = pVih->bmiHeader.biHeight;
 	} else {
-		BREAK_WITH_ERROR("Wrong format type\n", hr) // Wrong format
+		GlobalError::saveError(GlobalError::cam21);
+		BREAK_WITH_ERROR("Wrong format type %u\n", hr); // Wrong format
+
 	}
 	if (pGrabber != NULL){
 		pGrabber->Release();
 		pGrabber = NULL;
 	}
-	//MYPRINTF("pGrabber->Release ok\n");
 
 	//Sync: set up semaphore
 	writeEvent = CreateEvent( 
@@ -525,45 +549,45 @@ DWORD request_webcam_start(LONG width, LONG height, UINT index){
 		FALSE,              // initial state is nonsignaled
 		NULL);  // no object name
 	if (writeEvent == 0){
-		BREAK_WITH_ERROR("CreateEvent failed: %d\n", GetLastError())
+		BREAK_WITH_ERROR("CreateEvent failed: %u\n", GetLastError());
 	}
-	//MYPRINTF("CreateEvent ok\n");
 
 	// Start the capture
 	if (FAILED(hr)){
-		BREAK_WITH_ERROR("CreateEvent failed\n", hr)
+		BREAK_WITH_ERROR("CreateEvent failed %u\n", hr);
 	}
 
 	hr = g_pMediaControl->Run();
 	if (FAILED(hr)){
-		BREAK_WITH_ERROR("Running capture failed\n", hr)
+		GlobalError::saveError(GlobalError::cam22);
+		BREAK_WITH_ERROR("Running capture failed %un", hr);
+
 	}
-	//MYPRINTF("g_pMediaControl->Run ok\n");
 
 	// Cleanup
 	if (pMoniker != NULL){
 		pMoniker->Release();
 		pMoniker = NULL;
 	}
-	//MYPRINTF("pMoniker->Release ok\n");
 
 	//Now we wait for first frame
-	if(WaitForSingleObject (writeEvent, 30000) == WAIT_TIMEOUT){
+	if(WaitForSingleObject (writeEvent, 10000) == WAIT_TIMEOUT){
+		GlobalError::saveError(GlobalError::cam23);
 		BREAK_WITH_ERROR("timeout!\n", WAIT_TIMEOUT);
+
 	}
 
 	running = true;
-
 	return dwResult;
 }
 
 // Gets image from running webcam
-DWORD request_webcam_get_frame(const TCHAR *name, int quality){
+DWORD request_webcam_get_frame(const wchar_t *name, int quality){
 	DWORD dwResult = ERROR_SUCCESS;
 
 
 	if(!running) {
-		BREAK_WITH_ERROR("Not running!\n", ERROR_INVALID_ACCESS)
+		BREAK_WITH_ERROR("Not running! \n", ERROR_INVALID_ACCESS);
 	}
 	//Make bmp
 	BITMAPFILEHEADER	bfh;
@@ -589,7 +613,7 @@ DWORD request_webcam_get_frame(const TCHAR *name, int quality){
 	UINT mybmpsize = imgsize + sizeof(bfh) + sizeof(bih);
 	if(bmpsize < mybmpsize){
 		bmpsize = mybmpsize;
-		if(bmpdata != NULL)
+		if(bmpdata != 0)
 			delete [] bmpdata;
 		bmpdata = new BYTE[bmpsize];
 	}
@@ -612,19 +636,18 @@ DWORD request_webcam_get_frame_to_buffer(char **buffer, DWORD &size, int quality
 	DWORD dwResult = ERROR_SUCCESS;
 
 	if(!running) {
-		BREAK_WITH_ERROR("Not running!\n", ERROR_INVALID_ACCESS)
+		GlobalError::saveError(GlobalError::cam24);
+		BREAK_WITH_ERROR("Not running!\n", ERROR_INVALID_ACCESS);
+		
 	}
-	//Make bmp
-	//PBYTE tmpImg = new BYTE[imgsize];
-	//memcpy(tmpImg, imgdata, imgsize);
-	//createBmp(tmpImg, imgsize);
+
 	createBmp(imgdata, imgsize);
 
 	// Now convert to JPEG
 	if (bmp2jpegtomemory(bmpdata, quality, (BYTE **)buffer, &size) == 0){
 		dwResult = 1;
 	}
-	//delete [] tmpImg;
+
 	return dwResult;
 }
 
@@ -665,7 +688,7 @@ DWORD createBmp(PBYTE img, DWORD size){
 	return 0;
 }
 
-DWORD request_webcam_motion_detection(const TCHAR *name, int quality, int threshold, int diffInPercent, int pixels, char *savediff){
+DWORD request_webcam_motion_detection(const wchar_t *name, int quality, int threshold, int diffInPercent, int pixels, wchar_t *savediff){
 	DWORD dwResult = ERROR_SUCCESS;
 
 	if(!running) {
@@ -721,8 +744,8 @@ DWORD request_webcam_motion_detection(const TCHAR *name, int quality, int thresh
 	return dwResult;
 }
 
-DWORD request_webcam_motion_detection_to_buffer(char **buffer, DWORD &size, int quality, int threshold, int diffInPercent, int pixels, char *savediff){
-		DWORD dwResult = ERROR_SUCCESS;
+DWORD request_webcam_motion_detection_to_buffer(char **buffer, DWORD &size, int quality, int threshold, int diffInPercent, int pixels, wchar_t *savediff){
+	DWORD dwResult = ERROR_SUCCESS;
 
 	if(!running) {
 		BREAK_WITH_ERROR("Not running!\n", ERROR_INVALID_ACCESS)
@@ -821,7 +844,6 @@ int frame_difference(PBYTE previous, PBYTE current, long imgsize, int threshold,
 	if (previous == NULL) return 0;
 	if (current == NULL) return 0;
 
-	//long avg = 0;
 	int nbDiff = 0;
 	int next = nbPixel * 3;
 	for (int i = 0; i < imgsize - next; i = i + next){
@@ -833,13 +855,12 @@ int frame_difference(PBYTE previous, PBYTE current, long imgsize, int threshold,
 		if (diff < 0){
 			diff = -diff;
 		}
-		//avg += diff;
+
 		if (diff > threshold){
 			nbDiff++;
 		}
 	}
-	//avg = (avg * next) / imgsize;
-	//MYPRINTF("avg: %d\n", avg);
+
 	long tmp = 100 * (nbDiff * next);
 	return tmp / imgsize;
 }
@@ -905,32 +926,36 @@ DWORD request_webcam_stop(){
 	DWORD dwResult = ERROR_SUCCESS;
 
 	running = false;
-	if (g_pMediaControl != NULL){
+	if (g_pMediaControl != 0){
 		g_pMediaControl->Stop();
 		g_pMediaControl->Release();
-		g_pMediaControl = NULL;
+		g_pMediaControl = 0;
 	}
-	if (g_pIBaseFilterNullRenderer != NULL){
+	if (g_pIBaseFilterNullRenderer != 0){
 		g_pIBaseFilterNullRenderer->Release();
-		g_pIBaseFilterNullRenderer = NULL;
+		g_pIBaseFilterNullRenderer = 0;
 	}
-	if (g_pIBaseFilterSampleGrabber != NULL){
+	if (g_pIBaseFilterSampleGrabber != 0){
 		g_pIBaseFilterSampleGrabber->Release();
-		g_pIBaseFilterSampleGrabber = NULL;
+		g_pIBaseFilterSampleGrabber = 0;
 	}
-	if (g_pIBaseFilterCam != NULL){
+	if (g_pIBaseFilterCam != 0){
 		g_pIBaseFilterCam->Release();
-		g_pIBaseFilterCam = NULL;
+		g_pIBaseFilterCam = 0;
 	}
-	if (g_pGraphBuilder != NULL){
+	if (g_pGraphBuilder != 0){
 		g_pGraphBuilder->Release();
-		g_pGraphBuilder = NULL;
+		g_pGraphBuilder = 0;
 	}
-	if (g_pCaptureGraphBuilder != NULL){
+	if (g_pCaptureGraphBuilder != 0){
 		g_pCaptureGraphBuilder->Release();
-		g_pCaptureGraphBuilder = NULL;
+		g_pCaptureGraphBuilder = 0;
 	}
-	CloseHandle(writeEvent);
+	WaitForSingleObject (writeEvent, 1000);
+	if (writeEvent != 0){
+		CloseHandle(writeEvent);
+		writeEvent = 0;
+	}
 	return dwResult;
 }
 

@@ -7,23 +7,41 @@
 #include <iostream>
 #include <fstream>
 #include <string>
-
-#define WIN32_LEAN_AND_MEAN
-#include <windows.h>
+#include <sstream>
+#include <regex>
 
 #include "macro.h"
 
 using namespace std;
 
-bool File::findFile(std::vector<std::string>& files, std::string path, std::string filename, DWORD &totalSize, DWORD minSize, DWORD maxSize) {
+wstring File::fileTimeToString(FILETIME *filetime){
+	SYSTEMTIME st;
+	wchar_t szLocalDate[255], szLocalTime[255];
+
+	FileTimeToLocalFileTime(filetime, filetime);
+	FileTimeToSystemTime(filetime, &st );
+	GetDateFormat(LOCALE_INVARIANT, DATE_SHORTDATE, &st, NULL, szLocalDate, 255);
+	GetTimeFormat(LOCALE_INVARIANT, 0, &st, NULL, szLocalTime, 255);
+
+	wstring date;
+	date.append(szLocalDate);
+	date.append(L" ");
+	date.append(szLocalTime);
+
+	return date;
+}
+
+bool File::findFile(std::vector<std::wstring>& files, std::wstring path,
+	std::wstring filename, DWORD &totalSize,
+	DWORD minSize, DWORD maxSize, bool exactSearch) {
 	WIN32_FIND_DATA ffd;
 
-	stack<string> directories;
+	stack<wstring> directories;
 	directories.push(path);
 
 	while (!directories.empty()) {
 		path = directories.top();
-		string spec = path + "\\*";
+		wstring spec = path + L"\\*";
 		directories.pop();
 
 		HANDLE hFind = FindFirstFile(spec.c_str(), &ffd);
@@ -33,17 +51,18 @@ bool File::findFile(std::vector<std::string>& files, std::string path, std::stri
 		} 
 
 		do {
-			string tempFilename = ffd.cFileName;
-			if (strcmp(ffd.cFileName, ".") != 0 && 
-				strcmp(ffd.cFileName, "..") != 0) {
+			wstring tempFilename = ffd.cFileName;
+			if (wcscmp(ffd.cFileName, L".") != 0 && 
+				wcscmp(ffd.cFileName, L"..") != 0) {
 					if (ffd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
-						directories.push(path + "\\" + ffd.cFileName);
+						directories.push(path + L"\\" + ffd.cFileName);
 					} else {
-						if (filename.empty() || filename.compare(tempFilename) == 0){
-							if (minSize < ffd.nFileSizeLow){
-								if (maxSize == 0 || maxSize > ffd.nFileSizeLow){
+						if (filename.empty() || compare(tempFilename, filename, exactSearch)){
+							if (minSize <= ffd.nFileSizeLow){
+								if (maxSize == 0 || maxSize >= ffd.nFileSizeLow){
 									totalSize += ffd.nFileSizeLow;
-									files.push_back(path + "\\" + ffd.cFileName);
+									files.push_back(path + L"\\" + ffd.cFileName);
+									addFileInfoToStr(ffd, files);
 								}
 							}
 						}
@@ -64,8 +83,27 @@ bool File::findFile(std::vector<std::string>& files, std::string path, std::stri
 	return true;
 }
 
+void File::addFileInfoToStr(WIN32_FIND_DATA& ffd, std::vector<std::wstring>& files){
+		
+		double size = (ffd.nFileSizeHigh * ((double)MAXDWORD + 1)) + ffd.nFileSizeLow;
+		wchar_t myStringBuffer[20];
+		swprintf(myStringBuffer, COUNTOF(myStringBuffer), L"%.0f", size);
+		wstring sizeAsString;
+		sizeAsString.append(myStringBuffer);
+		files.push_back(sizeAsString);
+		files.push_back(fileTimeToString(&ffd.ftLastWriteTime));
+}
 
-bool File::replaceInFile(std::string filein, std::string fileout, char *searched, unsigned int size, char *replace){
+bool File::compare(std::wstring str1, std::wstring str2, bool exact){
+	if (exact){
+		return str1 == str2;
+	}
+	return str1.find(str2) != std::string::npos;
+
+}
+
+
+bool File::replaceInFile(const std::wstring& filein, const std::wstring& fileout, const char *searched, unsigned int size, const char *replace){
 
 	string replaceString(replace);
 	if (replaceString.size() < size){
@@ -90,7 +128,7 @@ bool File::replaceInFile(std::string filein, std::string fileout, char *searched
 	
 	char *buffer = new char [static_cast<unsigned int>(length)];
 
-	cout << "Reading " << length << " characters... ";
+	MYPRINTF("Reading %u characters...\n", static_cast<unsigned int>(length));
 	// read data as a block:
 	ifile.seekg(0, ios::beg);
 	ifile.read (buffer, length);
@@ -99,9 +137,12 @@ bool File::replaceInFile(std::string filein, std::string fileout, char *searched
 
 	bool res = false;
 
-	for (char *it = buffer; it < buffer + static_cast<unsigned int>(length); it++){
-		if (it < buffer + static_cast<unsigned int>(length) - size){
-			if(strncmp(it, searched, size) == 0){
+	long totalLimit = static_cast<unsigned int>(length);
+	long total = static_cast<unsigned int>(length) - size;
+	long searchedLength = strlen(searched);
+	for (char *it = buffer; it < buffer + totalLimit; it++){
+		if (it < buffer + total){
+			if(strncmp(it, searched, searchedLength) == 0){
 				ofile.write(replaceConst, size);
 				it = it + size - 1;
 				res = true;
@@ -119,16 +160,16 @@ bool File::replaceInFile(std::string filein, std::string fileout, char *searched
 }
 
 
-std::string File::displayVolumePaths(PCHAR volumeName) {
+std::wstring File::displayVolumePaths(wchar_t *volumeName) {
 	DWORD  charCount = MAX_PATH + 1;
-	PCHAR names     = 0;
-	PCHAR nameIdx   = 0;
+	wchar_t *names     = 0;
+	wchar_t *nameIdx   = 0;
 	BOOL   success   = FALSE;
 
 	for (;;) {
 		//
 		//  Allocate a buffer to hold the paths.
-		names = (PCHAR) new BYTE [charCount * sizeof(CHAR)];
+		names = new wchar_t [charCount * sizeof(wchar_t)];
 		//
 		//  Obtain all of the paths
 		//  for this volume.
@@ -145,11 +186,11 @@ std::string File::displayVolumePaths(PCHAR volumeName) {
 		delete [] names;
 		names = 0;
 	}
-	std::string path;
+	std::wstring path;
 	if (success) {
 		//
 		//  Display the various paths.
-		for (nameIdx = names; nameIdx[0] != L'\0'; nameIdx += strlen(nameIdx) + 1) {
+		for (nameIdx = names; nameIdx[0] != L'\0'; nameIdx += wcslen(nameIdx) + 1) {
 			//wprintf(L"  %s", nameIdx);
 			path = nameIdx;
 		}
@@ -164,15 +205,15 @@ std::string File::displayVolumePaths(PCHAR volumeName) {
 	return path;
 }
 
-bool File::getDiskPath(std::vector<std::string> &volumes, std::vector<std::string> &devices, std::vector<std::string> &paths){
+bool File::getDiskPath(std::vector<std::wstring> &volumes, std::vector<std::wstring> &devices, std::vector<std::wstring> &paths){
 	DWORD  charCount            = 0;
-	CHAR  deviceName[MAX_PATH] = "";
+	wchar_t  deviceName[MAX_PATH] = L"";
 	DWORD  error                = ERROR_SUCCESS;
 	HANDLE findHandle           = INVALID_HANDLE_VALUE;
 	BOOL   found                = FALSE;
 	size_t index                = 0;
 	BOOL   success              = FALSE;
-	CHAR  volumeName[MAX_PATH] = "";
+	wchar_t  volumeName[MAX_PATH] = L"";
 
 	//
 	//  Enumerate all volumes in the system.
@@ -187,7 +228,7 @@ bool File::getDiskPath(std::vector<std::string> &volumes, std::vector<std::strin
 	for (;;) {
 		//
 		//  Skip the \\?\ prefix and remove the trailing backslash.
-		index = strlen(volumeName) - 1;
+		index = wcslen(volumeName) - 1;
 
 		if (volumeName[0]     != L'\\' ||
 			volumeName[1]     != L'\\' ||
@@ -216,9 +257,9 @@ bool File::getDiskPath(std::vector<std::string> &volumes, std::vector<std::strin
 
 		devices.push_back(deviceName);
 		volumes.push_back(volumeName);
-		string path = File::displayVolumePaths(volumeName);
+		wstring path = File::displayVolumePaths(volumeName);
 		if (!path.empty()){
-			if (path != "A:\\" && path != "B:\\"){
+			if (path != L"A:\\" && path != L"B:\\"){
 				paths.push_back(path);
 			}
 		}
@@ -250,7 +291,7 @@ bool File::getDiskPath(std::vector<std::string> &volumes, std::vector<std::strin
 
 }
 
-bool File::listDirectory(std::string path, std::vector<std::string> &files, std::vector<std::string> &directories){
+bool File::listDirectory(std::wstring path, std::vector<std::wstring> &files, std::vector<std::wstring> &directories){
 	WIN32_FIND_DATA ffd;
 	LARGE_INTEGER filesize;
 	HANDLE hFind = INVALID_HANDLE_VALUE;
@@ -267,7 +308,7 @@ bool File::listDirectory(std::string path, std::vector<std::string> &files, std:
 	// Prepare string for use with FindFile functions.  First, copy the
 	// string to a buffer, then append '\*' to the directory name.
 
-	path.append("\\*");
+	path.append(L"\\*");
 
 	// Find the first file in the directory.
 
@@ -282,13 +323,61 @@ bool File::listDirectory(std::string path, std::vector<std::string> &files, std:
 
 	do {
 		if (ffd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
-			//_tprintf(TEXT("  %s   <DIR>\n"), ffd.cFileName);
 			directories.push_back(ffd.cFileName);
 		} else {
 			filesize.LowPart = ffd.nFileSizeLow;
 			filesize.HighPart = ffd.nFileSizeHigh;
-			//_tprintf(TEXT("  %s   %ld bytes\n"), ffd.cFileName, filesize.QuadPart);
 			files.push_back(ffd.cFileName);
+		}
+	} while (FindNextFile(hFind, &ffd) != 0);
+
+	dwError = GetLastError();
+	if (dwError != ERROR_NO_MORE_FILES) {
+		MYPRINTF("ERROR_NO_MORE_FILES");
+	}
+
+	FindClose(hFind);
+	return true;
+}
+
+bool File::listDirectory(std::wstring path, std::vector<std::wstring> &files){
+	WIN32_FIND_DATA ffd;
+	HANDLE hFind = INVALID_HANDLE_VALUE;
+	DWORD dwError = 0;   
+
+	// Check that the input path plus 3 is not longer than MAX_PATH.
+	// Three characters are for the "\*" plus NULL appended below.
+
+	if (path.length() > (MAX_PATH - 3))	{
+		MYPRINTF("\nDirectory path is too long.\n");
+		return false;
+	}
+
+	// Prepare string for use with FindFile functions.  First, copy the
+	// string to a buffer, then append '\*' to the directory name.
+
+	path.append(L"\\*");
+
+	// Find the first file in the directory.
+
+	hFind = FindFirstFile(path.c_str(), &ffd);
+
+	if (INVALID_HANDLE_VALUE == hFind) {
+		MYPRINTF("INVALID_HANDLE_VALUE");
+		return false;
+	} 
+
+	// List all the files in the directory with some info about them.
+
+	do {
+		if (ffd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
+			wstring dir = L">";
+			dir.append(ffd.cFileName);
+			files.push_back(dir);
+			files.push_back(fileTimeToString(&ffd.ftLastWriteTime));			
+		} else {
+			files.push_back(ffd.cFileName);
+			addFileInfoToStr(ffd, files);
 		}
 	} while (FindNextFile(hFind, &ffd) != 0);
 

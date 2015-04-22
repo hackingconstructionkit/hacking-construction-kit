@@ -61,7 +61,7 @@ public:
 	int tcpsend(char *, int size) throw (std::exception);
 
 	// receive a string
-	int Tcp::tcprecv(char *buffer, int size) throw (std::exception);
+	int tcprecv(char *buffer, int size) throw (std::exception);
 
 	// connect the socket
 	void tcpconnect() throw (std::exception);

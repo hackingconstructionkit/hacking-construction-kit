@@ -37,7 +37,6 @@
 
 #include <windows.h>
 #include <winnt.h>
-#include <tchar.h>
 #ifdef DEBUG_OUTPUT
 #include <stdio.h>
 #endif
@@ -560,11 +559,11 @@ static PIMAGE_RESOURCE_DIRECTORY_ENTRY _MemorySearchResourceEntry(
     
     if (!IS_INTRESOURCE(key) && key[0] == TEXT('#')) {
         // special case: resource id given as string
-        TCHAR *endpos = NULL;
+        wchar_t *endpos = NULL;
 #if defined(UNICODE)
-        long int tmpkey = (WORD) wcstol((TCHAR *) &key[1], &endpos, 10);
+        long int tmpkey = (WORD) wcstol((wchar_t *) &key[1], &endpos, 10);
 #else
-        long int tmpkey = (WORD) strtol((TCHAR *) &key[1], &endpos, 10);
+        long int tmpkey = (WORD) strtol((wchar_t *) &key[1], &endpos, 10);
 #endif
         if (tmpkey <= 0xffff && lstrlen(endpos) == 0) {
             key = MAKEINTRESOURCE(tmpkey);
@@ -746,7 +745,7 @@ MemoryLoadStringEx(HMEMORYMODULE module, UINT id, LPTSTR buffer, int maxsize, WO
         buffer[size] = 0;
     }
 #if defined(UNICODE)
-    wcsncpy(buffer, data->NameString, size);
+    wcsncpy_s(buffer, size, data->NameString, _TRUNCATE);
 #else
     wcstombs(buffer, data->NameString, size);
 #endif

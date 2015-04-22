@@ -18,7 +18,7 @@
 
 static WsaInit init;
 
-Ftp::Ftp(TCHAR *url, int port, TCHAR *user, TCHAR *password): m_h(0), m_handle(0){
+Ftp::Ftp(wchar_t *url, int port, wchar_t *user, wchar_t *password): m_h(0), m_handle(0){
 
 	HINTERNET m_h = InternetOpen(TEXT("mozilla"), INTERNET_OPEN_TYPE_DIRECT, 0, 0, 0);
 	if (m_h == 0) {
@@ -58,8 +58,8 @@ Ftp::~Ftp(){
 	}
 }
 
-std::tstring Ftp::getCurrentDirectory(){
-	TCHAR buffer[MAX_PATH];
+std::wstring Ftp::getCurrentDirectory(){
+	wchar_t buffer[MAX_PATH];
 	DWORD size = MAX_PATH;
 
 	if (FtpGetCurrentDirectory(m_handle, buffer, &size) == FALSE){
@@ -69,11 +69,11 @@ std::tstring Ftp::getCurrentDirectory(){
 	}
 
 	//A std:string  using the char* constructor.
-	std::tstring ss(buffer);
+	std::wstring ss(buffer);
 	return ss;
 }
 
-void Ftp::setCurrentDirectory(std::tstring directory){
+void Ftp::setCurrentDirectory(std::wstring directory){
 
 	if (FtpSetCurrentDirectory(m_handle, directory.c_str()) == FALSE){
 		int error = GetLastError();
@@ -82,7 +82,7 @@ void Ftp::setCurrentDirectory(std::tstring directory){
 	}
 }
 
-void Ftp::createDirectory(std::tstring directory){
+void Ftp::createDirectory(std::wstring directory){
 
 	if (FtpCreateDirectory(m_handle,  directory.c_str()) == FALSE){
 		int error = GetLastError();
@@ -91,7 +91,7 @@ void Ftp::createDirectory(std::tstring directory){
 	}
 }
 
-void Ftp::uploadFile(std::tstring local, std::tstring remote){
+void Ftp::uploadFile(std::wstring local, std::wstring remote){
 
 	DWORD_PTR context = 1;
 

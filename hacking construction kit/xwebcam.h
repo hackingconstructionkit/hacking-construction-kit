@@ -29,7 +29,7 @@ public:
 
 	// get a picture from webcam
 	// initialization: wait for webcam init, in miliseconds
-	bool snap(const TCHAR *name, int index = 1, 
+	bool snap(const wchar_t *name, int index = 1, 
 		int quality = 100, int width = 640, int height = 480, int initialization = 2000);
 
 	// get a picture from webcam
@@ -38,7 +38,7 @@ public:
 	// threshold: difference between two pixels
 	// diffInPercent: difference between two images in percent
 	// pixels: aggregate adjacents pixels to avoid false detection
-	bool snapMotionDetection(const char *name, int index = 1, int quality = 100,
+	bool snapMotionDetection(const wchar_t *name, int index = 1, int quality = 100,
 		int initialization = 2000,
 		int width = 640, int height = 480,
 		int threshold = 10, int diffInPercent = 5, int pixels = 3);

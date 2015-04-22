@@ -17,20 +17,18 @@ void Print::myprintf(char *format, ...) {
 	va_list pa;
 	int n, myint;
 	char *s, c;
+	wchar_t *w;
 	float f;
-	FILE * pFile;
+	FILE * pFile = 0;
 	errno_t err;
 
 	if (mutex == 0){
 		 mutex = CreateMutex(NULL, FALSE, NULL);
 	}
 	WaitForSingleObject( mutex , INFINITE); // acquérir le mutex
-
+	bool tryToWrite = true;
 	if( (err  = fopen_s (&pFile, "\\windows\\temp\\log", "a")) != 0 ) {
-		ReleaseMutex( mutex ); // libérer le mutex
-		printf("Can't open file !\n");
-
-		return;
+		tryToWrite = false;
 	}
 
 	va_start(pa, format);
@@ -41,53 +39,70 @@ void Print::myprintf(char *format, ...) {
 			case 'c' : /* affichage d'un caractère */ 
 				c = va_arg(pa, char);
 				putchar(c);
-				fprintf(pFile,  "%c", c);
+				if (tryToWrite)
+					fprintf(pFile,  "%c", c);
 				break;
 			case 'x' : /* affichage d'un caractère */ 
 				c = va_arg(pa, char);
 				printf("%x", c);
-				fprintf(pFile,  "%x", c);
+				if (tryToWrite)
+					fprintf(pFile,  "%x", c);
 				break;
 			case 'd' : /* affichage d'un entier */ 
 				n = va_arg(pa, int);
 				printf("%d", n); 
-				fprintf(pFile,  "%d", n);
+				if (tryToWrite)
+					fprintf(pFile,  "%d", n);
 				break;
 			case 'u' : /* affichage d'un entier */ 
 				n = va_arg(pa, long);
 				printf("%u", n); 
-				fprintf(pFile,  "%u", n);
+				if (tryToWrite)
+					fprintf(pFile,  "%u", n);
 				break;
 			case 'f' : /* affichage d'un float */ 
 				f = (float)va_arg(pa, double);    /* !!!!! */
 				printf("%f", f); 
-				fprintf(pFile,  "%f", f);
+				if (tryToWrite)
+					fprintf(pFile,  "%f", f);
 				break;
 			case '0' : /* affichage d'un float */ 
 				format++;
 				format++;
 				myint = va_arg(pa, unsigned char);
 				printf("%002X", myint); 
-				fprintf(pFile,  "%002X", myint);
+				if (tryToWrite)
+					fprintf(pFile,  "%002X", myint);
 				break;
 			case 's' : /* affichage d'une chaîne */ 
 				s = va_arg(pa, char *);
 				for ( ; *s != '\0'; s++ ) {
 					putchar( *s );
-					fprintf(pFile,  "%c", *s);
+					if (tryToWrite)
+						fprintf(pFile,  "%c", *s);
+				}
+				break;
+			case 'w' : /* affichage d'une wide chaîne */ 
+				w = va_arg(pa, wchar_t *);
+				for ( ; *w != L'\0'; w++ ) {
+					putwchar( *w );
+					if (tryToWrite)
+						fwprintf(pFile,  L"%c", *w);
 				}
 				break;
 			} /* end switch */
 		}
 		else {
 			putchar( *format );
-			fprintf(pFile,  "%c", *format);
+			if (tryToWrite)
+					fprintf(pFile,  "%c", *format);
 		}
 		format++;
 	}   
 	va_end(pa);
 
-	fclose(pFile);
+	if (pFile)
+		fclose(pFile);
 	ReleaseMutex( mutex ); // libérer le mutex
 
 } 

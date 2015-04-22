@@ -10,6 +10,7 @@
 
 #include <WinInet.h>
 
+
 #undef BOOLAPI
 #undef SECURITY_FLAG_IGNORE_CERT_DATE_INVALID
 #undef SECURITY_FLAG_IGNORE_CERT_CN_INVALID
@@ -50,10 +51,9 @@
 #include <WinInet.h>
 #pragma comment(lib, "Wininet.lib")
 
-#include <TCHAR.H>
-
 #include "print.h"
 #include "macro.h"
+#include "tstring.h"
 
 #include "memory_debug.h"
 
@@ -65,41 +65,41 @@
 
 #define MAX_LINE_READ 1000
 
-LPSTR* HttpHelper::get(char *uri){
+LPSTR* HttpHelper::get(wchar_t *uri){
 	return callGet(uri, 0);
 }
 
-void HttpHelper::download(const char *uri, const char *filename) {
+void HttpHelper::download(const wchar_t *uri, const wchar_t *filename) {
 	callGet(uri, filename);
 }
 
-bool HttpHelper::parseUri(const char *uri, char **url, char **resource){
+bool HttpHelper::parseUri(const wchar_t *uri, wchar_t **url, wchar_t **resource){
 
 
-	const char * pch;
-	pch = strchr(uri,'/');
+	const wchar_t *pch;
+	pch = wcschr(uri, '/');
 	if (pch == NULL){
-		*url = new char[strlen(uri) + 1];// 1 for \0 + 1 for index
-		strncpy(*url, uri, strlen(uri) + 1);
-		*resource = new char[2];
-		strncpy(*resource, "/", 2);
+		*url = new wchar_t[wcslen(uri) + 1];// 1 for \0 + 1 for index
+		wcsncpy_s(*url, wcslen(uri) + 1, uri, _TRUNCATE);
+		*resource = new wchar_t[2];
+		wcsncpy_s(*resource, 2, L"/", _TRUNCATE);
 		return true;
 	}
 	int found = pch - uri;
 	int urlSize = found + 1;
-	*url = new char[urlSize];// 1 for \0 + 1 for index
+	*url = new wchar_t[urlSize];// 1 for \0 + 1 for index
 
-	strncpy(*url, uri, urlSize - 1);
+	wcsncpy_s(*url, urlSize - 1, uri, _TRUNCATE);
 	(*url)[urlSize - 1] = '\0';
 
-	int resourceSize = strlen(uri) + 1 - (found);
-	*resource = new char[resourceSize];
-	strncpy(*resource, pch, resourceSize);
+	int resourceSize = wcslen(uri) + 1 - (found);
+	*resource = new wchar_t[resourceSize];
+	wcsncpy_s(*resource, resourceSize, pch, _TRUNCATE);
 
 	return true;
 }
 
-LPSTR* HttpHelper::callGet(const char *uri, const char *filename) {
+LPSTR* HttpHelper::callGet(const wchar_t *uri, const wchar_t *filename) {
 	BOOL result = false;
 	HINTERNET  hSession = 0, hConnect = 0, hRequest = 0;	
 	LPSTR* linesRead = 0;
@@ -109,14 +109,14 @@ LPSTR* HttpHelper::callGet(const char *uri, const char *filename) {
 		return 0;
 	}
 
-	char *url = 0;
-	char *resource = 0;
+	wchar_t *url = 0;
+	wchar_t *resource = 0;
 
 	if (!parseUri(uri, &url, &resource)){
 		return 0;
 	}
 
-	TCHAR uriEncoded[BUFFSIZE];
+	wchar_t uriEncoded[BUFFSIZE];
 	DWORD size = BUFFSIZE;
 	if (InternetCanonicalizeUrl(resource, uriEncoded, &size, 0) == false){
 		MYPRINTF("InternetCanonicalizeUrlA failed (%d)\n", GetLastError());
@@ -125,25 +125,17 @@ LPSTR* HttpHelper::callGet(const char *uri, const char *filename) {
 		return 0;
 	}
 
-	int wchars_num =  MultiByteToWideChar( CP_OEMCP , 0 , url , -1, NULL , 0 );
-	WCHAR* urlWide = new WCHAR[wchars_num];
-	MultiByteToWideChar( CP_OEMCP , 0 , url , -1, urlWide , wchars_num );
-
-	wchars_num =  MultiByteToWideChar( CP_OEMCP , 0 , uriEncoded , -1, NULL , 0 );
-	WCHAR* resourceWide = new WCHAR[wchars_num];
-	MultiByteToWideChar( CP_OEMCP , 0 , resource , -1, resourceWide , wchars_num );
-
 	// Use WinHttpOpen to obtain a session handle.
 	hSession = WinHttpOpen(L"WinHTTP Example/1.0", WINHTTP_ACCESS_TYPE_DEFAULT_PROXY, WINHTTP_NO_PROXY_NAME, WINHTTP_NO_PROXY_BYPASS, 0);
 
 	// Specify an HTTP server.
 	if(hSession) {
-		hConnect = WinHttpConnect(hSession, urlWide, INTERNET_DEFAULT_HTTP_PORT, 0);
+		hConnect = WinHttpConnect(hSession, url, INTERNET_DEFAULT_HTTP_PORT, 0);
 	}
 
 	// Create an HTTP request handle.
 	if(hConnect) {
-		hRequest = WinHttpOpenRequest(hConnect, L"GET", resourceWide, NULL, WINHTTP_NO_REFERER, WINHTTP_DEFAULT_ACCEPT_TYPES, 0);
+		hRequest = WinHttpOpenRequest(hConnect, L"GET", resource, NULL, WINHTTP_NO_REFERER, WINHTTP_DEFAULT_ACCEPT_TYPES, 0);
 	}
 
 	// Send a request.
@@ -175,8 +167,6 @@ LPSTR* HttpHelper::callGet(const char *uri, const char *filename) {
 	if(hConnect) WinHttpCloseHandle(hConnect);
 	if(hSession) WinHttpCloseHandle(hSession);
 
-	delete[] urlWide;
-	delete[] resourceWide;
 	delete[] url;
 	delete[] resource;
 
@@ -219,9 +209,9 @@ LPSTR* HttpHelper::parseResponse(HINTERNET hRequest){
 			while (token != NULL && i < MAX_LINE_READ) {
 				char *str = new char[strlen(token) + 1];
 				strcpy_s(str, strlen(token) + 1, token);
-				if (linesRead == 0){
-					linesRead = new LPSTR[MAX_LINE_READ + 1];
-				}
+				//if (linesRead == 0){
+				//	linesRead = new LPSTR[MAX_LINE_READ + 1];
+				//}
 				linesRead[i] = str;
 				i++;
 				// NOTE: NULL, function just re-uses the context after the first read.
@@ -233,14 +223,14 @@ LPSTR* HttpHelper::parseResponse(HINTERNET hRequest){
 	return linesRead;
 }
 
-bool HttpHelper::writeToFile(HINTERNET hRequest, const char *filename){
+bool HttpHelper::writeToFile(HINTERNET hRequest, const wchar_t *filename){
 	DWORD size;
 	LPSTR outBuffer;
 	DWORD downloaded = 0;
 	FILE * pFile;
 	errno_t err;	
 
-	err  = fopen_s (&pFile, filename, "wb");
+	err  = _wfopen_s (&pFile, filename, L"wb");
 	if(err != 0) {
 		MYPRINTF( "Can't open file %s!\n", filename);
 		return false;
@@ -289,6 +279,7 @@ bool HttpHelper::readInternetFile(HINTERNET hRequest, char **response, int &resp
 			if (dwBytesRead != 0){
 				pcBuffer[dwBytesRead] = 0x00; // Null-terminate buffer
 				*response = (char *)realloc(*response, BUFFSIZE * i);
+				
 				memcpy(*response + responseSize, pcBuffer, dwBytesRead);
 				MYPRINTF("%s\n", pcBuffer);
 			}
@@ -301,10 +292,10 @@ bool HttpHelper::readInternetFile(HINTERNET hRequest, char **response, int &resp
 }
 
 
-bool HttpHelper::sendGet(const TCHAR *server, const TCHAR *uri, char **response, int &responseSize){
+bool HttpHelper::sendGet(const wchar_t *server, const wchar_t *uri, char **response, int &responseSize){
 
 	HINTERNET   hSession, hConnection, hRequest;
-	TCHAR uriEncoded[BUFFSIZE];
+	wchar_t uriEncoded[BUFFSIZE];
 	DWORD size = BUFFSIZE;
 
 	if (InternetAttemptConnect(0) != ERROR_SUCCESS){
@@ -343,17 +334,18 @@ bool HttpHelper::sendGet(const TCHAR *server, const TCHAR *uri, char **response,
 		return FALSE;
 	}
 
-	static TCHAR hdrs[] = _T("Content-Type: application/x-www-form-urlencoded");
+	static wchar_t hdrs[] = L"Content-Type: application/x-www-form-urlencoded";
 
-	if (HttpSendRequest(hRequest, hdrs, _tcslen(hdrs), 0, 0) == false){
+	if (HttpSendRequest(hRequest, hdrs, wcslen(hdrs), 0, 0) == false){
 		MYPRINTF("HTTP HttpSendRequest(POST) failed (%d)\n", GetLastError());
 		InternetCloseHandle(hRequest);
 		InternetCloseHandle( hConnection );
 		InternetCloseHandle( hSession );
 		return FALSE;
 	}
-	
-	readInternetFile(hRequest, response, responseSize);
+	if (response != 0){
+		readInternetFile(hRequest, response, responseSize);
+	}
 	InternetCloseHandle(hRequest);
 	InternetCloseHandle(hConnection);
 	InternetCloseHandle(hSession);
@@ -361,11 +353,9 @@ bool HttpHelper::sendGet(const TCHAR *server, const TCHAR *uri, char **response,
 	return true;
 }
 
-bool HttpHelper::sendPost(const TCHAR *server, const TCHAR *uri, const char *post, char **response, int &responseSize){
+bool HttpHelper::sendPost(const wchar_t *server, wchar_t *uri, wchar_t *post, char **response, int &responseSize){
 
 	HINTERNET   hSession, hConnection, hRequest;
-	char postEncoded[BUFFSIZE];
-	TCHAR uriEncoded[BUFFSIZE];
 	DWORD size = BUFFSIZE;
 
 	if (InternetAttemptConnect(0) != ERROR_SUCCESS){
@@ -373,15 +363,15 @@ bool HttpHelper::sendPost(const TCHAR *server, const TCHAR *uri, const char *pos
 		return 0;
 	}
 
-	if (InternetCanonicalizeUrl(uri, uriEncoded, &size, ICU_ENCODE_SPACES_ONLY) == false){
+	if (InternetCanonicalizeUrl(uri, uri, &size, ICU_ENCODE_SPACES_ONLY) == false){
 		MYPRINTF("InternetCanonicalizeUrlA failed (%d)\n", GetLastError());
 		return FALSE;
 	}
 
-	if (InternetCanonicalizeUrlA(post, postEncoded, &size, ICU_ENCODE_SPACES_ONLY) == false){
-		MYPRINTF("InternetCanonicalizeUrlA failed (%d)\n", GetLastError());
-		return FALSE;
-	}
+	//if (InternetCanonicalizeUrl(post, post, &size, ICU_ENCODE_SPACES_ONLY) == false){
+	//	MYPRINTF("InternetCanonicalizeUrlA failed (%d)\n", GetLastError());
+	//	return FALSE;
+	//}
 
 	hSession = InternetOpen( TEXT(AGENT), INTERNET_OPEN_TYPE_PRECONFIG, NULL, NULL, 0 );
 	if( hSession == NULL ) {
@@ -398,7 +388,7 @@ bool HttpHelper::sendPost(const TCHAR *server, const TCHAR *uri, const char *pos
 		return FALSE;
 	}
 
-	hRequest = HttpOpenRequest( hConnection, TEXT("POST"), uriEncoded,
+	hRequest = HttpOpenRequest( hConnection, TEXT("POST"), uri,
 		HTTP_VERSION, NULL, 0, INTERNET_FLAG_KEEP_CONNECTION &&
 		INTERNET_FLAG_NO_CACHE_WRITE, 0 );
 	if( hRequest == NULL ) {
@@ -408,17 +398,25 @@ bool HttpHelper::sendPost(const TCHAR *server, const TCHAR *uri, const char *pos
 		return FALSE;
 	}
 
-	static TCHAR hdrs[] = _T("Content-Type: application/x-www-form-urlencoded");
+	static wchar_t hdrs[] = L"Content-Type: application/x-www-form-urlencoded";
 
-	if (HttpSendRequest(hRequest, hdrs, _tcslen(hdrs), postEncoded, strlen(postEncoded)) == false){
+	int nUserNameLenUnicode = lstrlenW(post); // Convert all UNICODE characters
+	int nUserNameLen = WideCharToMultiByte(CP_UTF8, 0, post, nUserNameLenUnicode, NULL, 0, NULL, NULL);
+	char *postConv = new char[nUserNameLen]; 
+	WideCharToMultiByte(CP_UTF8, 0, post, nUserNameLenUnicode, postConv, nUserNameLen, NULL, NULL); 
+	// TODO: remove utf-8 and use just a buffer
+	if (HttpSendRequest(hRequest, hdrs, wcslen(hdrs), postConv, nUserNameLen) == false){
 		MYPRINTF("HTTP HttpSendRequest(POST) failed (%d)\n", GetLastError());
 		InternetCloseHandle(hRequest);
 		InternetCloseHandle( hConnection );
 		InternetCloseHandle( hSession );
+		delete postConv;
 		return FALSE;
 	}
-
-	readInternetFile(hRequest, response, responseSize);
+	delete postConv;
+	if (response != 0){
+		readInternetFile(hRequest, response, responseSize);
+	}
 
 	InternetCloseHandle(hRequest);
 	InternetCloseHandle(hConnection);
@@ -426,19 +424,21 @@ bool HttpHelper::sendPost(const TCHAR *server, const TCHAR *uri, const char *pos
 	return true;
 }
 
-bool HttpHelper::createHeader(INTERNET_BUFFERS &internetBuffers, int size, const char *filename){
+bool HttpHelper::createHeader(INTERNET_BUFFERS &internetBuffers, int size, const wchar_t *filename){
 
 	LPCTSTR header = TEXT(CONTEXT_HEADER);
 	char *dataHeaderTemplate = HEADER_TEMPLATE;
 	char dataHeader[BUFFSIZE];
-	sprintf_s(dataHeader, BUFFSIZE, dataHeaderTemplate, filename);
+	char *filenameAsChar = wToc(filename);
+	sprintf_s(dataHeader, BUFFSIZE, dataHeaderTemplate, filenameAsChar);
+	delete[] filenameAsChar;
 	
 	BYTE *dataEnd = (BYTE *)HEADER_END;
 
 	ZeroMemory(&internetBuffers, sizeof(INTERNET_BUFFERS));
 	internetBuffers.dwStructSize = sizeof(INTERNET_BUFFERS);
 	internetBuffers.lpcszHeader = header;
-	internetBuffers.dwHeadersLength = _tcslen(header);
+	internetBuffers.dwHeadersLength = wcslen(header);
 	internetBuffers.lpvBuffer = NULL;
 	internetBuffers.dwBufferLength = 0;
 	internetBuffers.dwBufferTotal = size + strlen((char *)dataHeader) + strlen((char *)dataEnd); // content-length of data to post
@@ -446,9 +446,9 @@ bool HttpHelper::createHeader(INTERNET_BUFFERS &internetBuffers, int size, const
 	return true;
 }
 
-bool HttpHelper::uploadFile(const TCHAR *uri, const TCHAR *localFile, const char *remoteFile, char **response, int &responseSize){
-	char *url = 0;
-	char *resource = 0;
+bool HttpHelper::uploadFile(const wchar_t *uri, const wchar_t *localFile, const wchar_t *remoteFile, char **response, int &responseSize){
+	wchar_t *url = 0;
+	wchar_t *resource = 0;
 
 	if (!parseUri(uri, &url, &resource)){
 		return false;
@@ -471,29 +471,30 @@ bool HttpHelper::uploadFile(const TCHAR *uri, const TCHAR *localFile, const char
 * @param responseSize size of response page
 * @return
 */
-bool HttpHelper::uploadFile(const TCHAR *server, const TCHAR *uri, const TCHAR *localFile, const char *remoteFile, char **response, int &responseSize){
+bool HttpHelper::uploadFile(const wchar_t *server, const wchar_t *uri, const wchar_t *localFile, const wchar_t *remoteFile, char **response, int &responseSize){
 
 	HINTERNET   hSession, hConnection, hRequest;
 	DWORD dwBytesRead = 0;
 	DWORD dwBytesWritten = 0;
 	BYTE pBuffer[BUFFSIZE];
-	TCHAR uriEncoded[BUFFSIZE];
+	wchar_t uriEncoded[BUFFSIZE];
 	DWORD size = BUFFSIZE;
+	
 
 	if (InternetAttemptConnect(0) != ERROR_SUCCESS){
 		MYPRINTF("InternetAttemptConnect failed (%d)\n", GetLastError());
-		return 0;
+		return false;
 	}
 
 	if (InternetCanonicalizeUrl(uri, uriEncoded, &size, ICU_ENCODE_SPACES_ONLY) == false){
 		MYPRINTF("InternetCanonicalizeUrlA failed (%d)\n", GetLastError());
-		return FALSE;
+		return false;
 	}
 
 	hSession = InternetOpen( TEXT(AGENT), INTERNET_OPEN_TYPE_PRECONFIG, NULL, NULL, 0 );
 	if( hSession == NULL ) {
 		MYPRINTF("HTTP Open failed\n");
-		return FALSE;
+		return false;
 	}
 
 	hConnection = InternetConnect( hSession, server,
@@ -502,7 +503,7 @@ bool HttpHelper::uploadFile(const TCHAR *server, const TCHAR *uri, const TCHAR *
 	if( hConnection == NULL ) {
 		MYPRINTF("HTTP Connection failed (%d)\n", GetLastError());
 		InternetCloseHandle( hSession );
-		return FALSE;
+		return false;
 	}
 
 	hRequest = HttpOpenRequest( hConnection, TEXT("POST"), uriEncoded,
@@ -512,7 +513,7 @@ bool HttpHelper::uploadFile(const TCHAR *server, const TCHAR *uri, const TCHAR *
 		MYPRINTF("HTTP OpenRequest(POST) failed (%d)\n", GetLastError());
 		InternetCloseHandle( hConnection );
 		InternetCloseHandle( hSession );
-		return FALSE;
+		return false;
 	}
 
 	HANDLE hFile = CreateFile(localFile, //File name
@@ -528,12 +529,14 @@ bool HttpHelper::uploadFile(const TCHAR *server, const TCHAR *uri, const TCHAR *
 		InternetCloseHandle(hRequest);
 		InternetCloseHandle( hConnection );
 		InternetCloseHandle( hSession );
-		return FALSE;
+		return false;
 	}
 
 	char *dataHeaderTemplate = HEADER_TEMPLATE;
 	char dataHeader[BUFFSIZE];
-	sprintf_s(dataHeader, BUFFSIZE, dataHeaderTemplate, remoteFile);
+	char *lremoteFile = wToc(remoteFile);
+	sprintf_s(dataHeader, BUFFSIZE, dataHeaderTemplate, lremoteFile);
+	delete[] lremoteFile;
 
 	BYTE *dataEnd = (BYTE *)HEADER_END;
 
@@ -541,40 +544,54 @@ bool HttpHelper::uploadFile(const TCHAR *server, const TCHAR *uri, const TCHAR *
 	DWORD fileSize = GetFileSize(hFile, NULL);
 	createHeader(BuffersIn, fileSize, remoteFile);
 
-	if(HttpSendRequestEx(hRequest, &BuffersIn, 0, NULL, 0) == TRUE) {
+	bool result = true;
+
+	if (HttpSendRequestEx(hRequest, &BuffersIn, 0, 0, 0) == TRUE) {
 		DWORD sum = 0;
-		if(!(InternetWriteFile(hRequest, dataHeader, strlen((char *)dataHeader), &dwBytesWritten))) {
+		if(!InternetWriteFile(hRequest, dataHeader, strlen((char *)dataHeader), &dwBytesWritten)) {
 			MYPRINTF("Error Write header File\n");
+			result = false;
 		}
 
 		dwBytesWritten = 0;
 		do {
-			if(!(ReadFile(hFile, pBuffer, sizeof(pBuffer), &dwBytesRead, NULL))) {
+			if(result && !ReadFile(hFile, pBuffer, sizeof(pBuffer), &dwBytesRead, NULL)) {
 				MYPRINTF("Error Read File\n");
+				result = false;
 				break;
 			}
 			
-			if(!(InternetWriteFile(hRequest, pBuffer, dwBytesRead, &dwBytesWritten))) {
-				MYPRINTF("Error Write File\n");
-				break;
+			if(result && (dwBytesRead != 0)){
+				if(InternetWriteFile(hRequest, pBuffer, dwBytesRead, &dwBytesWritten)) {
+					sum += dwBytesWritten;
+				} else {
+					MYPRINTF("Error Write File\n");
+					result = false;
+					break;
+				}
 			}
 			
-			sum += dwBytesWritten;
+			
 		} while(dwBytesRead == sizeof(pBuffer));
 
 		dwBytesWritten = 0;
 
-		if(!(InternetWriteFile(hRequest, dataEnd, strlen((char *)dataEnd), &dwBytesWritten))) {
+		if(result && !InternetWriteFile(hRequest, dataEnd, strlen((char *)dataEnd), &dwBytesWritten)) {
 			MYPRINTF("Error Write end header File\n");
+			result = false;
 		}
 
-		if(!HttpEndRequest(hRequest, NULL, 0, 0)) {
+		if(result && !HttpEndRequest(hRequest, NULL, 0, 0)) {
 			MYPRINTF( "Error on HttpEndRequest %d \n", GetLastError());
+			result = false;
 		}
-		
-		readInternetFile(hRequest, response, responseSize);
+
+		if (result && (response != 0)){
+			readInternetFile(hRequest, response, responseSize);
+		}
 	} else {
 		MYPRINTF( "Error on HttpSendRequestEx %d \n", GetLastError());
+		result = false;
 	}
 
 	CloseHandle(hFile);
@@ -582,7 +599,7 @@ bool HttpHelper::uploadFile(const TCHAR *server, const TCHAR *uri, const TCHAR *
 	InternetCloseHandle(hRequest);
 	InternetCloseHandle(hConnection);
 	InternetCloseHandle(hSession);
-	return true;
+	return result;
 }
 
 
@@ -594,7 +611,7 @@ bool HttpHelper::uploadFile(const TCHAR *server, const TCHAR *uri, const TCHAR *
 * @return
 */
 
-bool HttpHelper::fileToBuffer(const TCHAR *file, char **buffer, int &size){
+bool HttpHelper::fileToBuffer(const wchar_t *file, char **buffer, int &size){
 
 	HANDLE hFile = CreateFile(file, //File name
 		GENERIC_READ, //Desired Access
@@ -643,28 +660,28 @@ bool HttpHelper::fileToBuffer(const TCHAR *file, char **buffer, int &size){
 * @return
 */
 
-bool HttpHelper::uploadBuffer(const TCHAR *server, const TCHAR *uri, const char* bufferToSend, int sizeToSend, const char *remoteFile, char **response, int &responseSize){
+bool HttpHelper::uploadBuffer(const wchar_t *server, const wchar_t *uri, const char* bufferToSend, int sizeToSend, const wchar_t *remoteFile, char **response, int &responseSize){
 
 	HINTERNET   hSession, hConnection, hRequest;
 	DWORD dwBytesWritten = 0;
-	TCHAR uriEncoded[BUFFSIZE];
+	wchar_t uriEncoded[BUFFSIZE];
 	DWORD size = BUFFSIZE;
 
 	if (InternetAttemptConnect(0) != ERROR_SUCCESS){
 		MYPRINTF("InternetAttemptConnect failed (%d)\n", GetLastError());
-		return 0;
+		return false;
 	}
 
 	if (InternetCanonicalizeUrl(uri, uriEncoded, &size, ICU_ENCODE_SPACES_ONLY) == false){
 		MYPRINTF("InternetCanonicalizeUrlA failed (%d)\n", GetLastError());
-		return FALSE;
+		return false;
 	}
 
 
 	hSession = InternetOpen( TEXT(AGENT), INTERNET_OPEN_TYPE_PRECONFIG, NULL, NULL, 0 );
 	if( hSession == NULL ) {
 		MYPRINTF("HTTP Open failed\n");
-		return FALSE;
+		return false;
 	}
 
 	hConnection = InternetConnect( hSession, server,
@@ -673,7 +690,7 @@ bool HttpHelper::uploadBuffer(const TCHAR *server, const TCHAR *uri, const char*
 	if( hConnection == NULL ) {
 		MYPRINTF("HTTP Connection failed (%d)\n", GetLastError());
 		InternetCloseHandle( hSession );
-		return FALSE;
+		return false;
 	}
 
 	hRequest = HttpOpenRequest( hConnection, TEXT("POST"), uriEncoded,
@@ -684,7 +701,7 @@ bool HttpHelper::uploadBuffer(const TCHAR *server, const TCHAR *uri, const char*
 		MYPRINTF("HTTP OpenRequest(POST) failed (%d)\n", GetLastError());
 		InternetCloseHandle( hConnection );
 		InternetCloseHandle( hSession );
-		return FALSE;
+		return false;
 	}
 
 	char *dataHeaderTemplate = HEADER_TEMPLATE;
@@ -696,41 +713,51 @@ bool HttpHelper::uploadBuffer(const TCHAR *server, const TCHAR *uri, const char*
 	INTERNET_BUFFERS buffersIn;
 
 	createHeader(buffersIn, sizeToSend, remoteFile);
+	bool result = true;
+
 	if (HttpSendRequestEx(hRequest, &buffersIn, 0, 0, 0) == TRUE) {
 		if (!(InternetWriteFile(hRequest, dataHeader, strlen((char *)dataHeader), &dwBytesWritten))) {
 			MYPRINTF("Error Write header File: %u\n", GetLastError());
+			result = false;
 		}
 		
 		dwBytesWritten = 0;
 
-		if (!(InternetWriteFile(hRequest,  bufferToSend, sizeToSend, &dwBytesWritten))) {
+		if (result && !InternetWriteFile(hRequest,  bufferToSend, sizeToSend, &dwBytesWritten)) {
 			MYPRINTF("Error Write File: %u\n", GetLastError());
+			result = false;
 		}
 
-		if (dwBytesWritten != sizeToSend) {
+		if (result && (dwBytesWritten != sizeToSend)) {
 			MYPRINTF("Upload is not complete : size: %d copyed: %d\n", sizeToSend, dwBytesWritten);
+			result = false;
 		}
 		
 		dwBytesWritten = 0;
 
-		if(!(InternetWriteFile(hRequest, dataEnd, strlen((char *)dataEnd), &dwBytesWritten))) {
+		if(result && !InternetWriteFile(hRequest, dataEnd, strlen((char *)dataEnd), &dwBytesWritten)) {
 			MYPRINTF("Error Write end header File: %u\n", GetLastError());
+			result = false;
 		}
 
 
-		if(!HttpEndRequest(hRequest, NULL, 0, 0)) {
+		if(result && !HttpEndRequest(hRequest, NULL, 0, 0)) {
 			MYPRINTF( "Error on HttpEndRequest %u \n", GetLastError());
+			result = false;
 		}
-		
-		readInternetFile(hRequest, response, responseSize);
+
+		if (result && (response != 0)){
+			readInternetFile(hRequest, response, responseSize);
+		}
 	} else {
 		MYPRINTF( "Error on HttpSendRequestEx %u \n", GetLastError());
+		result = false;
 	}
 
 
 	InternetCloseHandle(hRequest);
 	InternetCloseHandle(hConnection);
 	InternetCloseHandle(hSession);
-	return true;
+	return result;
 }
 

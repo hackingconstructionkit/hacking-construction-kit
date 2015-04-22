@@ -18,7 +18,7 @@
 
 #include <memory_debug.h>
 
-int _tmain(int argc, _TCHAR* argv[])
+int _tmain(int argc, wchar_t* argv[])
 {
 #if defined (WIN32) && defined (_DEBUG)
 	_CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF|_CRTDBG_LEAK_CHECK_DF);

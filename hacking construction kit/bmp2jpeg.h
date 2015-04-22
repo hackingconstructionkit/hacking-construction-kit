@@ -28,7 +28,7 @@ struct cjpeg_source_struct {
   JMETHOD(void, finish_input, (j_compress_ptr cinfo,
 			       cjpeg_source_ptr sinfo));
 
-  TCHAR *input_buf;
+  char *input_buf;
   UINT read_offset;
 
   JSAMPARRAY buffer;
@@ -70,7 +70,7 @@ cjpeg_source_ptr jinit_read_bmp (j_compress_ptr);
 // BMP-screenshot related functions
 // convert to jpeg and save in file
 // return 0 on error
-int bmp2jpegtofile(PBYTE buf, int quality, const TCHAR* filename);
+int bmp2jpegtofile(PBYTE buf, int quality, const wchar_t* filename);
 // BMP-screenshot related functions
 // convert to jpeg and save it in a buffer
 // return 0 on error

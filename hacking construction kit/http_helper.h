@@ -25,17 +25,19 @@ typedef LPVOID HINTERNET;
 
 class HttpHelper {
 public:
-	// Send HTTP get and retrieve page as array of LPSTR
-	LPSTR* get(char *uri);
+	// Send HTTP get and retrieve page as array of LPSTR.
+	// uri must not have http://
+	// ex: google.com
+	LPSTR* get(wchar_t *uri);
 
 	// download from uri and save as filename
-	void download(const char *uri, const char *filename);
+	void download(const wchar_t *uri, const wchar_t *filename);
 
 	// send HTTP get, and read response
-	bool sendGet(const TCHAR *server, const TCHAR *uri, char **response, int &responseSize);
+	bool sendGet(const wchar_t *server, const wchar_t *uri, char **response, int &responseSize);
 
 	// send HTTP post, and read response
-	bool sendPost(const TCHAR *server, const TCHAR *uri, const char *post, char **response, int &responseSize);
+	bool sendPost(const wchar_t *server, wchar_t *uri, wchar_t *post, char **response, int &responseSize);
 
 	/**
 	* @brief uploadFile upload a file with POST
@@ -47,8 +49,8 @@ public:
 	* @param responseSize size of response page
 	* @return
 	*/
-	bool uploadFile(const TCHAR *server, const TCHAR *resource, const TCHAR *localFile, const char *remoteFile, char **response, int &responseSize);
-	bool uploadFile(const TCHAR *uri, const TCHAR *localFile, const char *remoteFile, char **response, int &responseSize);
+	bool uploadFile(const wchar_t *server, const wchar_t *resource, const wchar_t *localFile, const wchar_t *remoteFile, char **response, int &responseSize);
+	bool uploadFile(const wchar_t *uri, const wchar_t *localFile, const wchar_t *remoteFile, char **response, int &responseSize);
 
 	/**
 	* @brief fileToBuffer read a file to a buffer
@@ -57,7 +59,7 @@ public:
 	* @param size
 	* @return
 	*/
-	bool fileToBuffer(const TCHAR *file, char **buffer, int &size);
+	bool fileToBuffer(const wchar_t *file, char **buffer, int &size);
 
 	/**
 	* @brief uploadBuffer upload a buffer to server with POST request
@@ -70,20 +72,20 @@ public:
 	* @param responseSize size of response
 	* @return
 	*/
-	bool uploadBuffer(const TCHAR *server, const TCHAR *resource, const char* bufferToSend, int sizeToSend, const char *remoteFile, char **response, int &responseSize);
+	bool uploadBuffer(const wchar_t *server, const wchar_t *resource, const char* bufferToSend, int sizeToSend, const wchar_t *remoteFile, char **response, int &responseSize);
 
 private:
-	bool parseUri(const char *uri, char **url, char **resource);
+	bool parseUri(const wchar_t *uri, wchar_t **url, wchar_t **resource);
 
 	LPSTR* parseResponse(HINTERNET hRequest);
 
-	LPSTR* callGet(const char *uri, const char *filename);
+	LPSTR* callGet(const wchar_t *uri, const wchar_t *filename);
 
-	bool writeToFile(HINTERNET hRequest, const char *filename);
+	bool writeToFile(HINTERNET hRequest, const wchar_t *filename);
 	
 	bool readInternetFile(HINTERNET hRequest, char **response, int &responseSize);
 
-	bool createHeader(INTERNET_BUFFERS &internetBuffers, int size, const char *filename);
+	bool createHeader(INTERNET_BUFFERS &internetBuffers, int size, const wchar_t *filename);
 
 };
 

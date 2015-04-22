@@ -19,6 +19,8 @@
 
 #include <string>
 
+#include "tstring.h"
+
 // This class manage crypt and encode functions
 class Decoder {
 
@@ -36,7 +38,8 @@ public:
 	static char *simpleEncode(char *encodedTarget);
 
 	// do a simple encoding: add +1 to all alpha chars
-	static std::string simpleEncode(std::string line);
+	static std::wstring simpleEncode(std::wstring line);
+	static std::wstring simpleEncode(std::string line);
 
 
 };

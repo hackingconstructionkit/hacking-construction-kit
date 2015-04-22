@@ -24,7 +24,7 @@ DWORD WINAPI RemoveService(HWND hwnd, HINSTANCE hinst, LPSTR lpszCmdLine, int nC
 	return 0;
 }
 
-int _tmain(int argc, _TCHAR* argv[])
+int _tmain(int argc, wchar_t* argv[])
 {
 #ifdef _DEBUG
 	_CrtSetDbgFlag ( _CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF );
@@ -35,7 +35,7 @@ int _tmain(int argc, _TCHAR* argv[])
 		std::cout << "usage: " << argv[0] << " url timer\n";
 		return 1;
 	}
-	Decoder::modulus = "61450025384610504519891362550805453301358404976798330653284132489";
+	Decoder::modulus = "22182266751546866702732293864001221613367376947728715114939553681689340030977730773386039325493608209";
 	Decoder::exponent = "65537";
 
 	WSADATA wsaData;
@@ -44,11 +44,11 @@ int _tmain(int argc, _TCHAR* argv[])
 	DWORD remoteccThreadId;
 
 	CCLoop_t ccParams;
-	ccParams.filename = "command_and_conquer.exe";
-	ccParams.version = "7";
-	ccParams.wait = atoi(argv[2]);
+	ccParams.filename = _T("command_and_conquer.exe");
+	ccParams.version = _T("7");
+	ccParams.wait = _tstoi(argv[2]);
 	ccParams.serversUrl = new std::string[1];
-	const std::string server = argv[1];
+	const std::string server = tosS(argv[1]);
 	ccParams.serversUrl[0] = server;
 	ccParams.nbServers = 1;
 

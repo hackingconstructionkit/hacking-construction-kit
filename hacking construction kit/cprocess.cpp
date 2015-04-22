@@ -1,10 +1,11 @@
 /*
- * Author: thirdstormofcythraul@outlook.com
- */
+* Author: thirdstormofcythraul@outlook.com
+*/
 #include "cprocess.h"
 
 #include <Psapi.h>
 #pragma comment(lib, "Psapi.lib")
+#include "Shlwapi.h"
 
 #include "extern/ntdll.h"
 #include "extern/utils.h"
@@ -38,7 +39,7 @@ BOOL Process::InjectProcess(DWORD dwPid, PVOID pvImageBase, DWORD dwImageSize, D
 				if (bRet){
 					DWORD dwExitCode;
 
-					if (WaitForSingleObject(hThread, 1*60*1000) == WAIT_OBJECT_0){
+					if (WaitForSingleObject(hThread, 1*1*1000) == WAIT_OBJECT_0){
 						if (GetExitCodeThread(hThread, &dwExitCode))	{
 							bRet = dwExitCode == STATUS_SUCCESS;
 						}
@@ -67,7 +68,7 @@ void Process::memoryFreeLibrary(HMEMORYMODULE library){
 	MemoryFreeLibrary(library);
 }
 
-bool Process::injectDll(const char *path, DWORD pid){
+bool Process::injectDll(const wchar_t *path, DWORD pid){
 	HANDLE dll = LoadLibrary(path);
 	if (dll){			
 		return Process::injectDll(dll, pid);
@@ -88,20 +89,20 @@ bool Process::injectDll(HANDLE dll, DWORD pid){
 		return false;
 	}
 	DWORD dwImageSize = headers->OptionalHeader.SizeOfImage;
-				
+
 	return Process::InjectProcess(pid, pvImageBase, dwImageSize, headers->OptionalHeader.AddressOfEntryPoint);
 }
 
 typedef struct {
-    PIMAGE_NT_HEADERS headers;
-    unsigned char *codeBase;
-    HCUSTOMMODULE *modules;
-    int numModules;
-    int initialized;
-    CustomLoadLibraryFunc loadLibrary;
-    CustomGetProcAddressFunc getProcAddress;
-    CustomFreeLibraryFunc freeLibrary;
-    void *userdata;
+	PIMAGE_NT_HEADERS headers;
+	unsigned char *codeBase;
+	HCUSTOMMODULE *modules;
+	int numModules;
+	int initialized;
+	CustomLoadLibraryFunc loadLibrary;
+	CustomGetProcAddressFunc getProcAddress;
+	CustomFreeLibraryFunc freeLibrary;
+	void *userdata;
 } MEMORYMODULE, *PMEMORYMODULE;
 
 bool Process::injectDllFromMemory(HMEMORYMODULE handle, DWORD pid){
@@ -116,7 +117,7 @@ bool Process::injectDllFromMemory(HMEMORYMODULE handle, DWORD pid){
 		return false;
 	}
 	DWORD dwImageSize = headers->OptionalHeader.SizeOfImage;
-				
+
 	return Process::InjectProcess(pid, pvImageBase, dwImageSize, headers->OptionalHeader.AddressOfEntryPoint);
 }
 
@@ -164,7 +165,7 @@ BOOL Process::CopyImageToProcess(HANDLE hProcess, PVOID pvImageBase, DWORD dwIma
 			}else{
 				MYPRINTF(__FUNCTION__"(): NtMapViewOfSection failed with status %x\n", St);
 			}
-			
+
 
 			UnmapViewOfFile(pCurrentMap);
 		}
@@ -200,23 +201,24 @@ BOOL Process::CopyImageToProcess(HANDLE hProcess, PVOID pvImageBase, DWORD dwIma
 	return bResult;
 }
 
-bool Process::injectDllWithLoadLibrary(const char *path, DWORD pid){
+bool Process::injectDllWithLoadLibrary(const wchar_t *path, DWORD pid){
 	HANDLE process = OpenProcess(PROCESS_ALL_ACCESS, FALSE, pid);
 	if(process == NULL) {
 		MYPRINTF("Error: the specified process couldn't be found.\n");
 	}
+	size_t len = wcslen(path);
 
-	LPVOID addr = (LPVOID)GetProcAddress(GetModuleHandle(TEXT("kernel32.dll")), "LoadLibraryA");
+	LPVOID addr = (LPVOID)GetProcAddress(GetModuleHandle(TEXT("kernel32.dll")), "LoadLibraryW");
 	if(addr == NULL) {
-		MYPRINTF("Error: the LoadLibraryA function was not found inside kernel32.dll library.\n");
+		MYPRINTF("Error: the LoadLibraryW function was not found inside kernel32.dll library.\n");
 	}
 
-	LPVOID arg = (LPVOID)VirtualAllocEx(process, NULL, strlen(path), MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
+	LPVOID arg = (LPVOID)VirtualAllocEx(process, NULL, len * sizeof(wchar_t), MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
 	if(arg == NULL) {
 		MYPRINTF("Error: the memory could not be allocated inside the chosen process.\n");
 	}
 
-	int n = WriteProcessMemory(process, arg, path, strlen(path), NULL);
+	int n = WriteProcessMemory(process, arg, path, len * sizeof(wchar_t), NULL);
 	if(n == 0) {
 		MYPRINTF("Error: there was no bytes written to the process's address space.\n");
 	}
@@ -233,6 +235,25 @@ bool Process::injectDllWithLoadLibrary(const char *path, DWORD pid){
 
 	return true;
 }  
+
+HANDLE Process::getExplorerHandle(){
+	wchar_t lpFileName[MAX_PATH] = {0};
+	DWORD  dwPID;
+	HANDLE hProcess;
+	HWND   hwnd = GetForegroundWindow();
+	GetWindowThreadProcessId( hwnd, &dwPID );
+	hProcess = OpenProcess( PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, false, dwPID );
+	GetModuleFileNameEx( hProcess, NULL, lpFileName, COUNTOF( lpFileName ) );
+	//PathStripPath( lpFileName );
+
+	if(wcscmp(L"explorer.exe", lpFileName) == 0) {
+		MYPRINTF("explorer window found" );
+	} else {
+		MYPRINTF("foreground window was not explorer window");
+	}
+	return hProcess;
+
+}
 
 bool Process::killProcess(DWORD pid)
 {
@@ -259,7 +280,7 @@ bool Process::killProcess(DWORD pid)
 	return ret == TRUE;
 }
 
-DWORD Process::getPid(const char *name){
+DWORD Process::getPid(const wchar_t *name){
 	DWORD ids[1024] = {0};
 	DWORD dwReturned = 0;
 	EnumProcesses(ids, sizeof(ids), &dwReturned);
@@ -267,9 +288,9 @@ DWORD Process::getPid(const char *name){
 	for(DWORD i = 0; i < (dwReturned / sizeof(DWORD)); i++){
 		HANDLE hp = OpenProcess(PROCESS_ALL_ACCESS, FALSE, ids[i]);
 		if(hp) {
-			TCHAR fname[MAX_PATH] = TEXT("");
+			wchar_t fname[MAX_PATH] = TEXT("");
 			GetProcessImageFileName(hp, fname, sizeof(fname)/sizeof(WCHAR) - 1);
-			if (strstr(fname, name) != 0){
+			if (wcsstr(fname, name) != 0){
 				CloseHandle(hp);
 				return ids[i];
 			}			

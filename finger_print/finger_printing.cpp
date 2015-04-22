@@ -7,18 +7,17 @@
 	#include <crtdbg.h>
 #endif
 
-#include <tchar.h>
-
 #include <WinSock2.h>
 
 #include <finger_print.h>
 #include <random.h>
 #include <Icmp.h>
 #include <check.h>
+#include <tstring.h>
 #pragma comment(lib, "hacking construction kit.lib")
 
 
-int _tmain(int argc, _TCHAR* argv[])
+int wmain(int argc, wchar_t* argv[])
 {
 #ifdef _DEBUG
 	_CrtSetDbgFlag ( _CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF );
@@ -34,7 +33,9 @@ int _tmain(int argc, _TCHAR* argv[])
 
 	Check::m_maxTargets = 10;
 
-	if (strcmp(argv[1], "all") == 0){
+	char *ip = wToc(argv[1]);
+
+	if (strcmp(ip, "all") == 0){
 		for(int i = 0; i < 10; i++){
 			char buffer[20];
 			if (Check::findHostPortOpen(buffer, 139, false)){
@@ -48,8 +49,9 @@ int _tmain(int argc, _TCHAR* argv[])
 			//}
 		}
 	} else {
-		FingerPrint::connectAndGetLanguage(argv[1]);
+		FingerPrint::connectAndGetLanguage(ip);
 	}
+	delete[] ip;
 	Sleep(5000);
 	return 0;
 }

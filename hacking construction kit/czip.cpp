@@ -8,8 +8,11 @@
 #include "lib/zlib/zlib.h"
 #include "lib/zlib/contrib/minizip/zip.h"
 
+#pragma comment(lib, "zlibstat.lib")
 
 #define WRITEBUFFERSIZE 2048
+
+using namespace std;
 
 uLong filetime(const char * f, tm_zip * tmzip, uLong * dt){
   int ret = 0;
@@ -30,22 +33,22 @@ uLong filetime(const char * f, tm_zip * tmzip, uLong * dt){
   return ret;
 }
 
-int Zip::compressFiles(std::string sourcePath, std::vector<std::string> files, std::string output){
+int Zip::compressFiles(const std::wstring& sourcePath, const std::vector<std::wstring>& files, const std::wstring& output){
 	char buffer[Zip::WRITE_BUFFER_SIZE];
-
-	zipFile zf = zipOpen(output.c_str(), APPEND_STATUS_CREATE);
+	wstring localSourcePath = sourcePath;
+	zipFile zf = zipOpen(tosS(output).c_str(), APPEND_STATUS_CREATE);
 	if (zf == 0){
 		return 3;
 	}
 
 	for (unsigned int i= 0; i < files.size(); i++) {
 	
-		std::string fileToZip;
+		string fileToZip;
 
 		if (sourcePath.size() == 0){
-			fileToZip = files[i];
+			fileToZip = tosS(files[i]);
 		} else {
-			fileToZip = sourcePath.append("\\").append(files[i]);
+			fileToZip = tosS(localSourcePath.append(L"\\").append(files[i]));
 		}
 		
 		zip_fileinfo fileInfo = {};
@@ -64,8 +67,8 @@ int Zip::compressFiles(std::string sourcePath, std::vector<std::string> files, s
 			return 4;
 		}
 
-		FILE *fin = fopen(fileToZip.c_str(), "rb");
-		if (fin == 0) {
+		FILE *fin;
+		if (fopen_s(&fin, fileToZip.c_str(), "rb") != 0) {
 			zipClose(zf, NULL);
 			return 5;
 		}

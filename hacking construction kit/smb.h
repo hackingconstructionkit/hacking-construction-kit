@@ -46,6 +46,6 @@ public:
 private:
 	Smb();
 
-	static bool bindToPipe(const unsigned char* target, unsigned char *pipe, RPC_BINDING_HANDLE handle);
+	static bool bindToPipe(const unsigned char* target, unsigned char *pipe, RPC_BINDING_HANDLE *handle);
 
 };

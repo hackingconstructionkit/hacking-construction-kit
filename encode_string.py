@@ -4,12 +4,6 @@ import	sys
 import	fileinput
 import	re
 
-# This script will encode strings in .cpp et .h with RC4
-# it will first search for the key CRYPTED_STRING_KEY in the sources
-# then it'll search for SnE("mystring", "")and translate it in SnE("aedqsdqsdf", "mystring")
-# so in the final .exe the strings will be encrypted
-
-
 def	replaceAll(file, searchExp, key):
 	for	line in	fileinput.input(file, inplace=	1):
 		mo = re.search(searchExp, line)
@@ -31,8 +25,8 @@ def	searchInFile(file, 	searchExp):
 
 class WikipediaARC4:
 	def __init__(self, key=None):
-		self.state = list(range(256))
-		self.x = self.y = 0
+		self.state = list(range(256)) # initialisation de la table de permutation
+		self.x = self.y = 0 # les index x et y, au lieu de i et j
 
 		if key is not None:
 			self.init(key)
@@ -44,6 +38,7 @@ class WikipediaARC4:
 			self.state[i], self.state[self.x] = self.state[self.x], self.state[i]
 			self.x = 0
 
+	# Générateur
 	def crypt(self, inputs):
 		output = [None] * len(inputs)
 		for i in range(len(inputs)):

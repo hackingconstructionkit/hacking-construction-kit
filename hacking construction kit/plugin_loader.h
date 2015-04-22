@@ -17,9 +17,9 @@
  */
 #pragma once
 
-#include <Windows.h>
-
 #include <vector>
+
+#include <Windows.h>
 
 // A plugin
 struct Plugin;
@@ -33,7 +33,7 @@ public:
 	~PluginLoader();
 
 	// Load this dll in a different thread
-	void load(const char *dllPath);
+	void load(const wchar_t *dllPath);
 
 	// Load all dlls found in registry
 	void loadAllPlugins();

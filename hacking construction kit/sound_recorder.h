@@ -27,7 +27,7 @@ public:
 	* bitsPerSample 8 or 16
 	* nbChannels is 1 for mono, 2 for stereo
 	*/
-	SoundRecorder(int sampleRate = 22050, int bitsPerSample = 8, int nbChannels = 1);
+	SoundRecorder(int sampleRate = 22050, int bitsPerSample = 16, int nbChannels = 1);
 
 	// Record sound
 	// length time in seconds
@@ -36,7 +36,7 @@ public:
 	// Record sound and save as filename
 	// length time in seconds
 	// TODO: calculate correctly lengthtime
-	bool record(int lengthTime, const char *filename);
+	bool record(int lengthTime, const wchar_t *filename);
 
 private:
 	int m_sampleRate;

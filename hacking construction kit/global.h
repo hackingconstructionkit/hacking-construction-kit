@@ -29,10 +29,9 @@ class Global {
 public:
 	static Global &get();
 
-	Global::~Global();
-
-	// Create mutex and events
-	void init();
+	Global::~Global();	
+	
+	void startRunning();
 
 	// get public internet ip
 	std::string getInternetIp();
@@ -55,10 +54,12 @@ public:
 	// event use to see if service is running
 	HANDLE SERVICE_RUNNING_EVENT;
 
-	static Global m_instance;
+	
 
 private:
 	Global();
+
+	static Global m_instance;
 
 	std::string m_internetIp;
 	std::string m_privateIp;
@@ -71,7 +72,6 @@ private:
 	// retrieve internet ip from web api
 	void initInternetIp();
 
-	bool m_isInit;
 	bool m_isPrivateInit;
 	bool m_isInternetInit;
 };
